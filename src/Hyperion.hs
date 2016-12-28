@@ -6,7 +6,7 @@ module Hyperion where
 
 import Control.Applicative
 import Control.Exception (evaluate)
-import Control.Monad.State (State, modify')
+import Control.Monad.State.Strict (State, modify')
 import Data.Monoid ((<>))
 import Data.Vector (Vector)
 import Data.Int (Int64)
