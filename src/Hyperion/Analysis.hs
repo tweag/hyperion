@@ -1,17 +1,21 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Hyperion.Analysis
-  ( namesOf
-  ) where
+module Hyperion.Analysis where
 
-import Control.Lens (Contravariant(..), Fold, folded)
+import Control.Lens (Contravariant(..), Fold, folded, (^.), over, to)
+import Control.Lens.Each
+import Control.Lens.Traversal (both)
 import Data.Text (Text)
 import qualified Data.Text as Text
-import Data.Monoid ((<>))
+import Data.Monoid
 import Data.Traversable (for)
+import qualified Data.Vector.Unboxed as Unboxed
 import Hyperion.Benchmark
 import Hyperion.Internal
+import Hyperion.Measurement
+import Hyperion.Report
+import Statistics.Sample (meanWeighted)
 
 data Component = BenchC Text | GroupC Text | SeriesC Text
 
@@ -36,3 +40,17 @@ namesOf = go []
 
     coerce :: (Contravariant f, Applicative f) => f a -> f b
     coerce = contramap (const ()) . fmap (const ())
+
+analyze :: Sample -> Report
+analyze samp = Report
+    { _reportTime = mean / getSum (samp^.measurements.each.batchSize.to realToFrac.to Sum)
+    , _reportCycles = Nothing
+    , _reportAlloc = Nothing
+    , _reportGCs = Nothing
+    }
+  where
+    mean =
+      samp
+      ^.measurements
+      .to (Unboxed.map (\m -> over both realToFrac (m^.duration, m^.batchSize)))
+      .to meanWeighted

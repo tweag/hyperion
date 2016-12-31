@@ -30,6 +30,7 @@ library
     mtl >= 2.2,
     random >= 1.1,
     random-shuffle >= 0.0.4,
+    statistics >= 0.13,
     text >= 1.2,
     unordered-containers >= 0.2,
     vector >= 0.11
