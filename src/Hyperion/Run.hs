@@ -6,10 +6,13 @@
 
 
 module Hyperion.Run
-  ( Sample(..)
-  , runBenchmark
+  ( -- * Run benchmarks
+    runBenchmark
+    -- * Benchmark transformations
   , shuffle
   , reorder
+    -- * strategies
+  , fixed
   ) where
 
 import Control.Lens (foldMapOf)
@@ -31,8 +34,6 @@ import Hyperion.Measurement
 import qualified System.Clock as Clock
 import System.Random (RandomGen(..))
 import qualified System.Random.Shuffle as SRS
-
-newtype Sample = Sample (Unboxed.Vector Measurement)
 
 -- | Time an action.
 chrono :: IO () -> IO Int64

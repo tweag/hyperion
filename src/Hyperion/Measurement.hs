@@ -2,7 +2,8 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Hyperion.Measurement
-  ( Measurement(..)
+  ( Sample(..)
+  , Measurement(..)
   ) where
 
 import Data.Int
@@ -10,6 +11,8 @@ import Control.Monad (liftM)
 import qualified Data.Vector.Generic as GV
 import qualified Data.Vector.Generic.Mutable as GMV
 import qualified Data.Vector.Unboxed as UV
+
+newtype Sample = Sample (UV.Vector Measurement)
 
 data Measurement = Measurement
   { batchSize :: Int64
