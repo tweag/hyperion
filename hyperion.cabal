@@ -23,6 +23,7 @@ library
     clock >= 0.7.2,
     deepseq >= 1.4,
     exceptions >= 0.8,
+    lens >= 4.0,
     mtl >= 2.2,
     random >= 1.1,
     random-shuffle >= 0.0.4,
