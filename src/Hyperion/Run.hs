@@ -58,12 +58,12 @@ instance (Monad m, Monoid a) => Monoid (StateT' s m a) where
   mappend m1 m2 = mappend <$> m1 <*> m2
 
 runBenchmark :: (Batch () -> IO Sample) -> Benchmark -> IO (HashMap Text Sample)
-runBenchmark sample bk0 =
+runBenchmark samplef bk0 =
   -- Ignore the names we find. Use fully qualified names accumulated from the
   -- lens defined above. The order is DFS in both cases.
   evalStateT (unStateT' (go bk0)) (foldMapOf namesOf return bk0)
   where
-    go (Bench _ batch) = HashMap.singleton <$> pop <*> lift (sample batch)
+    go (Bench _ batch) = HashMap.singleton <$> pop <*> lift (samplef batch)
     go (Group _ bks) = foldMap go bks
     go (Bracket ini fini g) =
       bracket (lift ini) (lift . fini) (go . g . Resource)
