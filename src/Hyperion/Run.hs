@@ -1,23 +1,30 @@
 -- | Run a hierarchical benchmark suite, collecting results.
 
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Hyperion.Run where
 
-import Control.Monad (forM_)
-import Control.Monad.Catch (bracket)
-import Control.Monad.Trans (liftIO)
-import Control.Monad.State.Strict (StateT, execStateT, modify')
+module Hyperion.Run
+  ( Sample(..)
+  , runBenchmark
+  , shuffle
+  , reorder
+  ) where
+
+import Control.Lens (foldMapOf)
+import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, bracket)
+import Control.Monad.State.Class (MonadState)
+import Control.Monad.State.Strict (StateT, evalStateT, get, put)
+import Control.Monad.Trans (MonadTrans(..))
 import Data.Int
 import Data.List (mapAccumR)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
-import Data.Monoid ((<>))
+import Data.Sequence (ViewL((:<)), viewl)
 import Data.Text (Text)
-import qualified Data.Text as Text
 import qualified Data.Vector.Unboxed as Unboxed
+import Hyperion.Analysis (namesOf)
 import Hyperion.Benchmark
 import Hyperion.Internal
 import Hyperion.Measurement
@@ -40,22 +47,31 @@ fixed batchSize batch = do
     duration <- chrono $ runBatch batch batchSize
     return $ Sample $ Unboxed.singleton Measurement{..}
 
-runBenchmark :: (Batch () -> IO Sample) -> Benchmark -> IO (HashMap Text Sample)
-runBenchmark sample bk0 = execStateT (go [] [] bk0) HashMap.empty
-  where
-    go :: [Text] -> [Text] -> Benchmark -> StateT (HashMap Text Sample) IO ()
-    go pref suff (Bench name batch) = do
-      results <- liftIO $ sample batch
-      let key = Text.intercalate "/" pref <> "/" <> name <> ":" <> Text.intercalate ":" suff
-      write key results
-    go pref suff (Group name bks) = do
-      forM_ bks $ \bk -> go (pref <> [name]) suff bk
-    go pref suff (Bracket ini fini f) =
-      bracket (liftIO ini) (liftIO . fini) (\x -> go pref suff (f (Resource x)))
-    go pref suff (Series xs f) = do
-      forM_ xs $ \x -> go pref ([Text.pack (show x)] <> suff) (f (Resource x))
+-- | Local private copy of 'StateT' to hang our otherwise orphan 'Monoid'
+-- instance to. This instance is missing from transformers.
+newtype StateT' s m a = StateT' { unStateT' :: StateT s m a }
+  deriving (Functor, Applicative, Monad, MonadCatch, MonadMask, MonadThrow, MonadState s, MonadTrans)
 
-    write k v = modify' (HashMap.insert k v)
+instance (Monad m, Monoid a) => Monoid (StateT' s m a) where
+  mempty = lift (return mempty)
+  mappend m1 m2 = mappend <$> m1 <*> m2
+
+runBenchmark :: (Batch () -> IO Sample) -> Benchmark -> IO (HashMap Text Sample)
+runBenchmark sample bk0 =
+  -- Ignore the names we find. Use fully qualified names accumulated from the
+  -- lens defined above. The order is DFS in both cases.
+  evalStateT (unStateT' (go bk0)) (foldMapOf namesOf return bk0)
+  where
+    go (Bench _ batch) = HashMap.singleton <$> pop <*> lift (sample batch)
+    go (Group _ bks) = foldMap go bks
+    go (Bracket ini fini g) =
+      bracket (lift ini) (lift . fini) (go . g . Resource)
+    go (Series xs g) = foldMap (go . g . Resource) xs
+
+    pop = do
+      x :< xs <- viewl <$> get
+      put xs
+      return x
 
 -- | Convenience wrapper around 'SRS.shuffle'.
 shuffle :: RandomGen g => g -> [a] -> [a]

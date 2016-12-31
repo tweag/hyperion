@@ -20,6 +20,7 @@ library
     Hyperion.Run
   build-depends:
     base >= 4.9 && < 5,
+    containers >= 0.5,
     clock >= 0.7.2,
     deepseq >= 1.4,
     exceptions >= 0.8,
