@@ -17,11 +17,14 @@ library
     Hyperion.Analysis
     Hyperion.Benchmark
     Hyperion.Internal
+    Hyperion.Main
     Hyperion.Measurement
+    Hyperion.Report
     Hyperion.Run
   build-depends:
     aeson >= 0.11,
     base >= 4.9 && < 5,
+    bytestring >= 0.10,
     containers >= 0.5,
     clock >= 0.7.2,
     deepseq >= 1.4,
