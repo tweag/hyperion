@@ -20,6 +20,7 @@ library
     Hyperion.Measurement
     Hyperion.Run
   build-depends:
+    aeson >= 0.11,
     base >= 4.9 && < 5,
     containers >= 0.5,
     clock >= 0.7.2,

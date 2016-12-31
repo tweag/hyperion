@@ -1,23 +1,30 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Hyperion.Measurement
-  ( Sample(..)
-  , Measurement(..)
+  ( Measurement(..)
+  , batchSize
+  , duration
+  , Sample(..)
+  , measurements
   ) where
 
 import Data.Int
+import Control.Lens.TH (makeLenses)
 import Control.Monad (liftM)
 import qualified Data.Vector.Generic as GV
 import qualified Data.Vector.Generic.Mutable as GMV
 import qualified Data.Vector.Unboxed as UV
 
-newtype Sample = Sample (UV.Vector Measurement)
-
 data Measurement = Measurement
-  { batchSize :: Int64
-  , duration :: Int64
+  { _batchSize :: Int64
+  , _duration :: Int64
   }
+makeLenses ''Measurement
+
+newtype Sample = Sample { _measurements :: UV.Vector Measurement }
+makeLenses ''Sample
 
 newtype instance UV.MVector s Measurement = MV_Measurement (UV.MVector s (Int64, Int64))
 newtype instance UV.Vector Measurement = V_Measurement  (UV.Vector (Int64, Int64))

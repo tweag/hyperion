@@ -44,8 +44,8 @@ chrono act = do
   return $ fromIntegral $ Clock.toNanoSecs $ Clock.diffTimeSpec start end
 
 fixed :: Int64 -> Batch () -> IO Sample
-fixed batchSize batch = do
-    duration <- chrono $ runBatch batch batchSize
+fixed _batchSize batch = do
+    _duration <- chrono $ runBatch batch _batchSize
     return $ Sample $ Unboxed.singleton Measurement{..}
 
 -- | Local private copy of 'StateT' to hang our otherwise orphan 'Monoid'
