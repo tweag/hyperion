@@ -50,10 +50,20 @@ options :: Options.Parser ConfigMonoid
 options =
     ConfigMonoid <$>
       (First <$> optional
-        (Options.flag' Version (Options.long "version" <> Options.hidden) <|>
-         Options.flag' List (Options.long "list" <> Options.short 'l') <|>
-         Options.flag' Analyze (Options.long "run") <|>
-         Options.flag' Run (Options.long "no-analyze")))
+        (Options.flag' Version
+           (Options.long "version" <>
+            Options.hidden <>
+            Options.help "Display version information") <|>
+         Options.flag' List
+           (Options.long "list" <>
+            Options.short 'l' <>
+            Options.help "List benchmark names") <|>
+         Options.flag' Analyze
+           (Options.long "run" <>
+            Options.help "Run benchmarks and analyze them (default)") <|>
+         Options.flag' Run
+           (Options.long "no-analyze" <>
+            Options.help "Only run the benchmarks")))
 
 defaultConfig :: ConfigMonoid
 defaultConfig = mempty
