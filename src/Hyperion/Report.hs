@@ -9,7 +9,12 @@ import Data.Aeson.TH
 import Data.Int
 
 data Report = Report
-  { _reportTime :: Double
+  { _reportTimeMean :: Maybe Double
+  , _reportTimeMedian :: Maybe Double
+  , _reportTimeMax :: Maybe Double
+  , _reportTime90 :: Maybe Double
+  , _reportTime99 :: Maybe Double
+  , _reportTime99_9 :: Maybe Double
   , _reportCycles :: Maybe Double
   , _reportAlloc :: Maybe Int64
   , _reportGCs :: Maybe Int64

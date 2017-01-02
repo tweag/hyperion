@@ -43,7 +43,13 @@ namesOf = go []
 
 analyze :: Sample -> Report
 analyze samp = Report
-    { _reportTime = mean / getSum (samp^.measurements.each.batchSize.to realToFrac.to Sum)
+    { _reportTimeMean = Just (mean / getSum (samp^.measurements.each.batchSize.to realToFrac.to Sum))
+    -- The following fields are currently not computed, but will be soon.
+    , _reportTimeMedian = Nothing
+    , _reportTimeMax = Nothing
+    , _reportTime90 = Nothing
+    , _reportTime99 = Nothing
+    , _reportTime99_9 = Nothing
     , _reportCycles = Nothing
     , _reportAlloc = Nothing
     , _reportGCs = Nothing
