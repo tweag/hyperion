@@ -5,12 +5,16 @@
 module Hyperion.Report where
 
 import Control.Lens.TH (makeLenses)
+import Control.Lens (_head, (%~))
 import GHC.Generics (Generic)
 import qualified Data.Aeson as JSON
 import Data.Aeson ((.=))
 import Data.Aeson.TH
+import Data.Char (toLower)
 import Data.HashMap.Strict (HashMap)
 import Data.Int
+import Data.List (stripPrefix)
+import Data.Maybe (fromJust)
 import Data.Text (Text)
 import Data.Time (UTCTime)
 
@@ -21,7 +25,7 @@ data Report = Report
   , _reportGarbageCollections :: Maybe Int64
   } deriving (Generic)
 makeLenses ''Report
-deriveJSON defaultOptions{fieldLabelModifier = drop 1} ''Report
+deriveJSON defaultOptions{fieldLabelModifier = (_head %~ toLower) . fromJust . stripPrefix "_report" } ''Report
 
 json :: UTCTime -> Maybe Text -> HashMap Text Report -> JSON.Value
 json timestamp hostId report =
