@@ -14,10 +14,12 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid
 import Data.Text (Text)
 import qualified Data.Text.IO as Text
+import Data.Time (getCurrentTime)
 import Data.Version (showVersion)
 import Hyperion.Analysis
 import Hyperion.Benchmark
 import Hyperion.Measurement
+import Hyperion.Report
 import Hyperion.Run
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Aeson as JSON
@@ -78,7 +80,8 @@ doAnalyze :: [Benchmark] -> IO ()
 doAnalyze bks = do
     results <- doRun bks
     let report = analyze <$> results
-    BS.putStrLn (JSON.encode report)
+    now <- getCurrentTime
+    BS.putStrLn $ JSON.encode $ json now Nothing report
 
 defaultMainWith :: ConfigMonoid -> [Benchmark] -> IO ()
 defaultMainWith config bks = do

@@ -36,6 +36,7 @@ library
     random-shuffle >= 0.0.4,
     statistics >= 0.13,
     text >= 1.2,
+    time >= 1.0,
     unordered-containers >= 0.2,
     vector >= 0.11
   default-language: Haskell2010
