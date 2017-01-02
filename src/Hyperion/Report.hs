@@ -18,7 +18,7 @@ data Report = Report
   { _reportTime :: Double
   , _reportCycles :: Maybe Double
   , _reportAlloc :: Maybe Int64
-  , _reportGCs :: Maybe Int64
+  , _reportGarbageCollections :: Maybe Int64
   } deriving (Generic)
 makeLenses ''Report
 deriveJSON defaultOptions{fieldLabelModifier = drop 1} ''Report

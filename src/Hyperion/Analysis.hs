@@ -46,7 +46,7 @@ analyze samp = Report
     { _reportTime = mean / getSum (samp^.measurements.each.batchSize.to realToFrac.to Sum)
     , _reportCycles = Nothing
     , _reportAlloc = Nothing
-    , _reportGCs = Nothing
+    , _reportGarbageCollections = Nothing
     }
   where
     mean =
