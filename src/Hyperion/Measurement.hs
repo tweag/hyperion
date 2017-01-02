@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -21,15 +22,17 @@ data Measurement = Measurement
   { _batchSize :: Int64
   , _duration :: Int64
   }
+  deriving (Eq, Ord, Show)
 makeLenses ''Measurement
 
+instance UV.Unbox Measurement
+
 newtype Sample = Sample { _measurements :: UV.Vector Measurement }
+  deriving (Eq, Monoid, Ord, Show)
 makeLenses ''Sample
 
 newtype instance UV.MVector s Measurement = MV_Measurement (UV.MVector s (Int64, Int64))
 newtype instance UV.Vector Measurement = V_Measurement  (UV.Vector (Int64, Int64))
-
-instance UV.Unbox Measurement
 
 instance GMV.MVector UV.MVector Measurement where
   {-# INLINE basicLength #-}
