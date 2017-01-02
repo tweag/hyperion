@@ -1,5 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -11,6 +12,8 @@ module Hyperion.Measurement
   , measurements
   ) where
 
+import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson.TH
 import Data.Int
 import Control.Lens.TH (makeLenses)
 import Control.Monad (liftM)
@@ -24,12 +27,16 @@ data Measurement = Measurement
   }
   deriving (Eq, Ord, Show)
 makeLenses ''Measurement
+deriveJSON defaultOptions{ fieldLabelModifier = drop 1 } ''Measurement
 
 instance UV.Unbox Measurement
 
 newtype Sample = Sample { _measurements :: UV.Vector Measurement }
   deriving (Eq, Monoid, Ord, Show)
 makeLenses ''Sample
+
+deriving instance FromJSON Sample
+deriving instance ToJSON Sample
 
 newtype instance UV.MVector s Measurement = MV_Measurement (UV.MVector s (Int64, Int64))
 newtype instance UV.Vector Measurement = V_Measurement  (UV.Vector (Int64, Int64))

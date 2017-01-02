@@ -47,6 +47,7 @@ analyze samp = Report
     , _reportCycles = Nothing
     , _reportAlloc = Nothing
     , _reportGarbageCollections = Nothing
+    , _reportMeasurements = Just samp
     }
   where
     mean =
