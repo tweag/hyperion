@@ -13,9 +13,11 @@ module Hyperion.Run
   , reorder
     -- * strategies
   , fixed
+  , sample
   ) where
 
 import Control.Lens (foldMapOf)
+import Control.Monad (replicateM)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, bracket)
 import Control.Monad.State.Class (MonadState)
 import Control.Monad.State.Strict (StateT, evalStateT, get, put)
@@ -43,10 +45,15 @@ chrono act = do
   end <- Clock.getTime Clock.Monotonic
   return $ fromIntegral $ Clock.toNanoSecs $ Clock.diffTimeSpec start end
 
+-- | Sample once a batch of fixed size.
 fixed :: Int64 -> Batch () -> IO Sample
 fixed _batchSize batch = do
     _duration <- chrono $ runBatch batch _batchSize
     return $ Sample $ Unboxed.singleton Measurement{..}
+
+-- | Run a sampling strategy @n@ times.
+sample :: Int64 -> (Batch () -> IO Sample) -> Batch () -> IO Sample
+sample n f batch = mconcat <$> replicateM (fromIntegral n) (f batch)
 
 -- | Local private copy of 'StateT' to hang our otherwise orphan 'Monoid'
 -- instance to. This instance is missing from transformers.

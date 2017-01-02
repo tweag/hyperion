@@ -72,7 +72,7 @@ doList :: [Benchmark] -> IO ()
 doList bks = mapM_ Text.putStrLn $ bks^..folded.namesOf
 
 doRun :: [Benchmark] -> IO (HashMap Text Sample)
-doRun bks = foldMap (runBenchmark (fixed 100)) bks
+doRun bks = foldMap (runBenchmark (sample 100 (fixed 5))) bks
 
 doAnalyze :: [Benchmark] -> IO ()
 doAnalyze bks = do
