@@ -82,7 +82,11 @@ doAnalyze bks = do
 
 defaultMainWith :: ConfigMonoid -> [Benchmark] -> IO ()
 defaultMainWith config bks = do
-    cmdlineConfig <- Options.execParser (Options.info (Options.helper <*> options) (Options.fullDesc))
+    cmdlineConfig <-
+      Options.execParser
+        (Options.info
+          (Options.helper <*> options)
+          Options.fullDesc)
     case configFromMonoid (cmdlineConfig <> config) of
       Config{..} -> case configMode of
         Version -> putStrLn $ "Hyperion " <> showVersion version
