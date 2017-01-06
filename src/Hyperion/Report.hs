@@ -12,6 +12,7 @@ import Data.Aeson ((.=))
 import Data.Aeson.TH
 import Data.Char (toLower)
 import Data.HashMap.Strict (HashMap)
+import qualified Data.HashMap.Strict as HashMap
 import Data.Int
 import Data.List (stripPrefix)
 import Data.Maybe (fromJust)
@@ -20,7 +21,8 @@ import Data.Time (UTCTime)
 import Hyperion.Measurement (Sample)
 
 data Report = Report
-  { _reportTime :: Double
+  { _reportBenchName :: Text
+  , _reportTime :: Double
   , _reportCycles :: Maybe Double
   , _reportAlloc :: Maybe Int64
   , _reportGarbageCollections :: Maybe Int64
@@ -33,5 +35,5 @@ json :: UTCTime -> Maybe Text -> HashMap Text Report -> JSON.Value
 json timestamp hostId report =
     JSON.object
       [ "metadata" .= JSON.object [ "timestamp" .= timestamp, "location" .= hostId ]
-      , "results" .= report
+      , "results" .= HashMap.elems report
       ]

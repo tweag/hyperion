@@ -50,9 +50,13 @@ namesOf = go []
     coerce :: (Contravariant f, Applicative f) => f a -> f b
     coerce = contramap (const ()) . fmap (const ())
 
-analyze :: Sample -> Report
+analyze
+  :: Text -- ^ Benchmark name
+  -> Sample -- ^ Measurements
+  -> Report
 analyze name samp = Report
-    { _reportTime =
+    { _reportBenchName = name
+    , _reportTime =
         mean /
         ala
           Sum

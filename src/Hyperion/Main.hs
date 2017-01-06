@@ -9,7 +9,7 @@ module Hyperion.Main
   ) where
 
 import Control.Applicative
-import Control.Lens ((&), (.~), (%~), (^..), folded, mapped)
+import Control.Lens ((&), (.~), (%~), (%@~), (^..), folded, imapped, mapped)
 import Data.HashMap.Strict (HashMap)
 import Data.Maybe (fromMaybe)
 import Data.Monoid
@@ -99,7 +99,7 @@ doAnalyze Config{..} bks = do
     let strip
           | configRaw = id
           | otherwise = reportMeasurements .~ Nothing
-        report = results & mapped %~ strip.analyze
+        report = results & imapped %@~ analyze & mapped %~ strip
     now <- getCurrentTime
     BS.putStrLn $ JSON.encode $ json now Nothing report
 
