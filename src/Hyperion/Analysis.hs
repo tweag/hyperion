@@ -41,9 +41,10 @@ namesOf = go []
     coerce :: (Contravariant f, Applicative f) => f a -> f b
     coerce = contramap (const ()) . fmap (const ())
 
-analyze :: Sample -> Report
-analyze samp = Report
-    { _reportTime = mean / getSum (samp^.measurements.each.batchSize.to realToFrac.to Sum)
+analyze :: Text -> Sample -> Report
+analyze benchName samp = Report
+    { _reportName = benchName
+    , _reportTime = mean / getSum (samp^.measurements.each.batchSize.to realToFrac.to Sum)
     , _reportCycles = Nothing
     , _reportAlloc = Nothing
     , _reportGarbageCollections = Nothing

@@ -10,7 +10,7 @@ module Hyperion.Main
 
 import Control.Applicative
 import Control.Lens ((&), (.~), (%~), (^..), folded, mapped)
-import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Strict (toList, HashMap)
 import Data.Maybe (fromMaybe)
 import Data.Monoid
 import Data.Text (Text)
@@ -91,7 +91,7 @@ doList :: [Benchmark] -> IO ()
 doList bks = mapM_ Text.putStrLn $ bks^..folded.namesOf
 
 doRun :: [Benchmark] -> IO (HashMap Text Sample)
-doRun bks = foldMap (runBenchmark (sample 100 (fixed 5))) bks
+doRun bks = foldMap (runBenchmark (sample 100 (fixed 1))) bks
 
 doAnalyze :: Config -> [Benchmark] -> IO ()
 doAnalyze Config{..} bks = do
@@ -99,7 +99,7 @@ doAnalyze Config{..} bks = do
     let strip
           | configRaw = id
           | otherwise = reportMeasurements .~ Nothing
-        report = results & mapped %~ strip.analyze
+        report = map (strip . uncurry analyze) (toList results) -- & mapped %~ strip.analyze
     now <- getCurrentTime
     BS.putStrLn $ JSON.encode $ json now Nothing report
 
