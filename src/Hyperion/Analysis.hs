@@ -3,7 +3,16 @@
 
 module Hyperion.Analysis where
 
-import Control.Lens (Contravariant(..), Fold, folded, (^.), over, to)
+import Control.Lens
+  ( Contravariant(..)
+  , Fold
+  , ala
+  , foldMapOf
+  , folded
+  , (^.)
+  , over
+  , to
+  )
 import Control.Lens.Each
 import Control.Lens.Traversal (both)
 import Data.Text (Text)
@@ -42,8 +51,13 @@ namesOf = go []
     coerce = contramap (const ()) . fmap (const ())
 
 analyze :: Sample -> Report
-analyze samp = Report
-    { _reportTime = mean / getSum (samp^.measurements.each.batchSize.to realToFrac.to Sum)
+analyze name samp = Report
+    { _reportTime =
+        mean /
+        ala
+          Sum
+          (foldMapOf (measurements.each.batchSize.to realToFrac))
+          samp
     , _reportCycles = Nothing
     , _reportAlloc = Nothing
     , _reportGarbageCollections = Nothing
