@@ -1,10 +1,12 @@
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Hyperion.Main
   ( defaultMain
   , Mode(..)
   , ConfigMonoid(..)
+  , nullOutputPath
   , defaultConfig
   , defaultMainWith
   ) where
@@ -99,6 +101,15 @@ options = do
             (Options.long "raw" <>
              Options.help "Include raw measurement data in report."))
      pure ConfigMonoid{..}
+
+-- | The path to the null output file. This is @"nul"@ on Windows and
+-- @"/dev/null"@ elsewhere.
+nullOutputPath :: FilePath
+#ifdef mingw32_HOST_OS
+nullOutputPath = "nul"
+#else
+nullOutputPath = "/dev/null"
+#endif
 
 defaultConfig :: ConfigMonoid
 defaultConfig = mempty
