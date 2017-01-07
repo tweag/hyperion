@@ -30,12 +30,14 @@ import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Aeson as JSON
 import qualified Options.Applicative as Options
 import Paths_hyperion (version)
+import qualified System.IO as IO
 
 data Mode = Version | List | Run | Analyze
   deriving (Eq, Ord, Show)
 
 data ConfigMonoid = ConfigMonoid
-  { configMonoidMode :: First Mode
+  { configMonoidOutputPath :: First FilePath
+  , configMonoidMode :: First Mode
   , configMonoidRaw :: First Bool
   }
 
@@ -44,13 +46,16 @@ instance Monoid ConfigMonoid where
     ConfigMonoid
       mempty
       mempty
+      mempty
   mappend c1 c2 =
     ConfigMonoid
+      (mappend (configMonoidOutputPath c1) (configMonoidOutputPath c2))
       (mappend (configMonoidMode c1) (configMonoidMode c2))
       (mappend (configMonoidRaw c1) (configMonoidRaw c2))
 
 data Config = Config
-  { configMode :: Mode
+  { configOutputPath :: Maybe FilePath
+  , configMode :: Mode
   , configRaw :: Bool
   }
 
@@ -59,12 +64,19 @@ fromFirst x = fromMaybe x . getFirst
 
 configFromMonoid :: ConfigMonoid -> Config
 configFromMonoid ConfigMonoid{..} = Config
-    { configMode = fromFirst Analyze configMonoidMode
+    { configOutputPath = getFirst configMonoidOutputPath
+    , configMode = fromFirst Analyze configMonoidMode
     , configRaw = fromFirst False configMonoidRaw
     }
 
 options :: Options.Parser ConfigMonoid
 options = do
+     configMonoidOutputPath <-
+       First <$> optional
+         (Options.strOption
+            (Options.long "output" <>
+             Options.short 'o' <>
+             Options.metavar "FILENAME"))
      configMonoidMode <-
        First <$> optional
          (Options.flag' Version
@@ -109,13 +121,17 @@ doRun bks = do
 
 doAnalyze :: Config -> [Benchmark] -> IO ()
 doAnalyze Config{..} bks = do
+    h <- case configOutputPath of
+      Nothing -> return IO.stdout
+      Just path -> IO.openFile path IO.WriteMode
     results <- doRun bks
     let strip
           | configRaw = id
           | otherwise = reportMeasurements .~ Nothing
         report = results & imapped %@~ analyze & mapped %~ strip
     now <- getCurrentTime
-    BS.putStrLn $ JSON.encode $ json now Nothing report
+    BS.hPutStrLn h $ JSON.encode $ json now Nothing report
+    IO.hClose h
 
 defaultMainWith :: ConfigMonoid -> [Benchmark] -> IO ()
 defaultMainWith presetConfig bks = do
