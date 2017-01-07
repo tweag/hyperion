@@ -1,0 +1,17 @@
+box: fpco/stack-build:lts-7.14
+
+build:
+  steps:
+  - script:
+      name: Dependencies
+      code: |
+        stack --system-ghc config set system-ghc --global true
+        stack --no-terminal build --only-snapshot --prefetch
+  - script:
+      name: Project
+      code: |
+        stack --no-terminal build --pedantic --test --no-run-tests
+  - script:
+      name: Test
+      code: |
+        stack --no-terminal test
