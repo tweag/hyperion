@@ -25,6 +25,8 @@ library
     Hyperion.Measurement
     Hyperion.Report
     Hyperion.Run
+  other-modules:
+    Paths_hyperion
   build-depends:
     aeson >= 0.11,
     base >= 4.9 && < 5,
