@@ -35,6 +35,19 @@ data Benchmark where
   Bracket :: NFData r => IO r -> (r -> IO ()) -> (Env r -> Benchmark) -> Benchmark
   Series :: Show a => Vector a -> (Env a -> Benchmark) -> Benchmark
 
+sp :: ShowS
+sp = showChar ' '
+
+instance Show Benchmark where
+  showsPrec _ (Bench name _) =
+      showString "Bench" . sp . shows name . sp . showString "_"
+  showsPrec x (Group name bks) =
+      showString "Group" . sp . shows name . sp . showsPrec x bks
+  showsPrec x (Bracket _ _ f) =
+      showString "Bracket" . sp . showString "(\\_ -> " . showsPrec x (f Empty) . showString ")"
+  showsPrec x (Series xs f) =
+      showString "Series" . sp . shows xs . sp . showString "(\\_ -> " . showsPrec x (f Empty) . showString ")"
+
 bench :: Text -> Batch () -> Benchmark
 bench = Bench
 
