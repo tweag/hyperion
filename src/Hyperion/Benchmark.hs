@@ -26,6 +26,7 @@ import Data.Monoid
 import Data.Vector (Vector)
 import Data.Int (Int64)
 import Data.Text (Text)
+import qualified Data.Text as Text
 import Control.DeepSeq
 import Hyperion.Internal
 
@@ -48,11 +49,11 @@ instance Show Benchmark where
   showsPrec x (Series xs f) =
       showString "Series" . sp . shows xs . sp . showString "(\\_ -> " . showsPrec x (f Empty) . showString ")"
 
-bench :: Text -> Batch () -> Benchmark
-bench = Bench
+bench :: String -> Batch () -> Benchmark
+bench name batch = Bench (Text.pack name) batch
 
-bgroup :: Text -> [Benchmark] -> Benchmark
-bgroup = Group
+bgroup :: String -> [Benchmark] -> Benchmark
+bgroup name bks = Group (Text.pack name) bks
 
 series :: Show a => Vector a -> (Env a -> Benchmark) -> Benchmark
 series = Series
