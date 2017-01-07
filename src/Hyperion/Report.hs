@@ -21,12 +21,12 @@ import Data.Time (UTCTime)
 import Hyperion.Measurement (Sample)
 
 data Report = Report
-  { _reportBenchName :: Text
-  , _reportTime :: Double
-  , _reportCycles :: Maybe Double
-  , _reportAlloc :: Maybe Int64
-  , _reportGarbageCollections :: Maybe Int64
-  , _reportMeasurements :: Maybe Sample
+  { _reportBenchName :: !Text
+  , _reportTime :: !Double
+  , _reportCycles :: !(Maybe Double)
+  , _reportAlloc :: !(Maybe Int64)
+  , _reportGarbageCollections :: !(Maybe Int64)
+  , _reportMeasurements :: !(Maybe Sample)
   } deriving (Generic)
 makeLenses ''Report
 deriveJSON defaultOptions{ fieldLabelModifier = (_head %~ toLower) . fromJust . stripPrefix "_report" } ''Report

@@ -22,8 +22,8 @@ import qualified Data.Vector.Generic.Mutable as GMV
 import qualified Data.Vector.Unboxed as UV
 
 data Measurement = Measurement
-  { _batchSize :: Int64
-  , _duration :: Int64
+  { _batchSize :: {-# UNPACK #-} !Int64
+  , _duration :: {-# UNPACK #-} !Int64
   }
   deriving (Eq, Ord, Show)
 makeLenses ''Measurement
