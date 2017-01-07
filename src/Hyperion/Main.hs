@@ -3,7 +3,8 @@
 
 module Hyperion.Main
   ( defaultMain
-  , Config
+  , Mode(..)
+  , ConfigMonoid(..)
   , defaultConfig
   , defaultMainWith
   ) where
