@@ -54,6 +54,7 @@ test-suite spec
   main-is: Main.hs
   other-modules:
     Hyperion.BenchmarkSpec
+    Hyperion.MainSpec
     Spec
   build-depends:
     base,
