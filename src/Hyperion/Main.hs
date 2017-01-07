@@ -9,8 +9,11 @@ module Hyperion.Main
   ) where
 
 import Control.Applicative
+import Control.Exception (Exception, throwIO)
 import Control.Lens ((&), (.~), (%~), (%@~), (^..), folded, imapped, mapped)
+import Control.Monad (unless)
 import Data.HashMap.Strict (HashMap)
+import Data.List (group, sort)
 import Data.Maybe (fromMaybe)
 import Data.Monoid
 import Data.Text (Text)
@@ -87,11 +90,21 @@ options = do
 defaultConfig :: ConfigMonoid
 defaultConfig = mempty
 
+data DuplicateNames = DuplicateNames [Text]
+instance Exception DuplicateNames
+instance Show DuplicateNames where
+  show (DuplicateNames nms) = "Duplicate names: " <> show nms
+
 doList :: [Benchmark] -> IO ()
 doList bks = mapM_ Text.putStrLn $ bks^..folded.namesOf
 
 doRun :: [Benchmark] -> IO (HashMap Text Sample)
-doRun bks = foldMap (runBenchmark (sample 100 (fixed 5))) bks
+doRun bks = do
+    let nms = bks^..folded.namesOf
+    -- Better asymptotics than nub.
+    unless (length (group (sort nms)) == length nms) $
+      throwIO $ DuplicateNames [ n | n:_:_ <- group (sort nms) ]
+    foldMap (runBenchmark (sample 100 (fixed 5))) bks
 
 doAnalyze :: Config -> [Benchmark] -> IO ()
 doAnalyze Config{..} bks = do
