@@ -1,7 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Hyperion.Analysis where
+module Hyperion.Analysis
+  ( namesOf
+  , analyze
+  ) where
 
 import Control.Lens
   ( Contravariant(..)
