@@ -7,13 +7,13 @@
 
 module Hyperion.Run
   ( -- * Run benchmarks
-    runBenchmark
+    runBenchmarkVaryingSizes
     -- * Benchmark transformations
   , shuffle
   , reorder
     -- * strategies
-  , fixed
-  , sample
+  , fixedBatchSizes
+  , samples
   ) where
 
 import Control.Lens (foldMapOf)
@@ -23,7 +23,7 @@ import Control.Monad.State.Class (MonadState)
 import Control.Monad.State.Strict (StateT, evalStateT, get, put)
 import Control.Monad.Trans (MonadTrans(..))
 import Data.Int
-import Data.List (mapAccumR)
+import Data.List (foldl', mapAccumR)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Sequence (ViewL((:<)), viewl)
@@ -45,11 +45,19 @@ chrono act = do
   end <- Clock.getTime Clock.Monotonic
   return $ fromIntegral $ Clock.toNanoSecs $ Clock.diffTimeSpec start end
 
+-- | Sample a batch once on each provided fixed size.
+fixedBatchSizes :: [Int64] -> [Batch () -> IO Sample]
+fixedBatchSizes = map fixed
+
 -- | Sample once a batch of fixed size.
 fixed :: Int64 -> Batch () -> IO Sample
 fixed _batchSize batch = do
     _duration <- chrono $ runBatch batch _batchSize
     return $ Sample $ Unboxed.singleton Measurement{..}
+
+-- | Run a samplin strategy @n@ times on multiple batch sizes.
+samples :: Int64 -> [(Batch () -> IO Sample)] -> [Batch () -> IO Sample]
+samples n f = map (\f' batch -> sample n f' batch) f
 
 -- | Run a sampling strategy @n@ times.
 sample :: Int64 -> (Batch () -> IO Sample) -> Batch () -> IO Sample
@@ -80,6 +88,20 @@ runBenchmark samplef bk0 =
       x :< xs <- viewl <$> get
       put xs
       return x
+
+-- | Run a benchmark on varying sample sizes
+runBenchmarkVaryingSizes :: [(Batch () -> IO Sample)] -> Benchmark -> IO (HashMap Text [Sample])
+runBenchmarkVaryingSizes samplef bk0 = formatSamples $ sequence (map (\samplef' -> runBenchmark samplef' bk0) samplef)
+
+-- | Set of functions to massage the data into the appropriate type
+formatSamples :: IO([HashMap Text Sample]) -> IO (HashMap Text [Sample])
+formatSamples samples = concatenateSamples $ expandSamples samples
+
+expandSamples :: IO ([HashMap Text Sample]) -> IO ([HashMap Text [Sample]])
+expandSamples samples = fmap (map (fmap (\x -> [x]))) samples
+
+concatenateSamples :: IO ([HashMap Text [Sample]]) -> IO (HashMap Text [Sample])
+concatenateSamples samples = fmap (foldl' (HashMap.unionWith(++)) HashMap.empty) samples
 
 -- | Convenience wrapper around 'SRS.shuffle'.
 shuffle :: RandomGen g => g -> [a] -> [a]

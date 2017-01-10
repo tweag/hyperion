@@ -31,7 +31,7 @@ data Report = Report
 makeLenses ''Report
 deriveJSON defaultOptions{ fieldLabelModifier = (_head %~ toLower) . fromJust . stripPrefix "_report" } ''Report
 
-json :: UTCTime -> Maybe Text -> HashMap Text Report -> JSON.Value
+json :: UTCTime -> Maybe Text -> HashMap Text [Report] -> JSON.Value
 json timestamp hostId report =
     JSON.object
       [ "metadata" .= JSON.object [ "timestamp" .= timestamp, "location" .= hostId ]
