@@ -19,7 +19,7 @@ import Data.HashMap.Strict (HashMap)
 import Data.List (group, sort)
 import Data.Maybe (fromMaybe)
 import Data.Monoid
-import Data.Text (Text)
+import Data.Text (pack, Text, unpack)
 import qualified Data.Text.IO as Text
 import Data.Time (getCurrentTime)
 import Data.Version (showVersion)
@@ -34,6 +34,10 @@ import qualified Data.Aeson as JSON
 import qualified Options.Applicative as Options
 import Paths_hyperion (version)
 import qualified System.IO as IO
+import System.Directory (createDirectoryIfMissing, doesDirectoryExist)
+import System.Environment (getProgName)
+import System.FilePath ((</>), (<.>))
+import System.FilePath.Posix (hasTrailingPathSeparator)
 
 data Mode = Version | List | Run | Analyze
   deriving (Eq, Ord, Show)
@@ -84,7 +88,8 @@ options = do
          (Options.strOption
             (Options.long "output" <>
              Options.short 'o' <>
-             Options.metavar "FILENAME"))
+             Options.help "Where to write the benchmarks output. Can be a directory name" <>
+             Options.metavar "PATH"))
      configMonoidMode <-
        First <$> optional
          (Options.flag' Version
@@ -141,11 +146,25 @@ doRun bks = do
       throwIO $ DuplicateNames [ n | n:_:_ <- group (sort nms) ]
     foldMap (runBenchmark (sample 100 (fixed 5))) bks
 
-doAnalyze :: Config -> [Benchmark] -> IO ()
-doAnalyze Config{..} bks = do
+doAnalyze
+  :: Config -- ^ Hyperion config.
+  -> Text -- ^ Package name.
+  -> [Benchmark] -- ^ Benchmarks to be run.
+  -> IO ()
+doAnalyze Config{..} packageName bks = do
+    executableName <- getProgName -- Name of the executable that launched the benches.
     h <- case configOutputPath of
       Nothing -> return IO.stdout
-      Just path -> IO.openFile path IO.WriteMode
+      Just path -> do
+        dirExists <- doesDirectoryExist path
+        if dirExists ||
+           hasTrailingPathSeparator path
+        then do
+          let filename = (unpack packageName) <.> executableName <.> "json"
+          createDirectoryIfMissing True path -- Creates the directory if needed.
+          IO.openFile (path </> filename) IO.WriteMode
+        else
+          IO.openFile path IO.WriteMode
     results <- doRun bks
     let strip
           | configRaw = id
@@ -156,8 +175,12 @@ doAnalyze Config{..} bks = do
     when configPretty (printReports report)
     maybe (return ()) (\_ -> IO.hClose h) configOutputPath
 
-defaultMainWith :: ConfigMonoid -> [Benchmark] -> IO ()
-defaultMainWith presetConfig bks = do
+defaultMainWith
+  :: ConfigMonoid -- ^ Preset Hyperion config.
+  -> String -- ^ Package name, user provided.
+  -> [Benchmark] -- ^ Benchmarks to be run.
+  -> IO ()
+defaultMainWith presetConfig packageName bks = do
     cmdlineConfig <-
       Options.execParser
         (Options.info
@@ -169,7 +192,10 @@ defaultMainWith presetConfig bks = do
         Version -> putStrLn $ "Hyperion " <> showVersion version
         List -> doList bks
         Run -> do _ <- doRun bks; return ()
-        Analyze -> doAnalyze config bks
+        Analyze -> doAnalyze config (pack packageName) bks
 
-defaultMain :: [Benchmark] -> IO ()
+defaultMain
+  :: String -- ^ Package name, user provided.
+  -> [Benchmark] -- ^ Benchmarks to be run.
+  -> IO ()
 defaultMain = defaultMainWith defaultConfig
