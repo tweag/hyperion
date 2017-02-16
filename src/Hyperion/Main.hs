@@ -152,24 +152,33 @@ doAnalyze
   -> IO ()
 doAnalyze Config{..} benchesName bks = do
     executableName <- getProgName -- Name of the execuatble that launched the benches.
-    h <- case configOutputPath of
-      Nothing -> return IO.stdout
+    (h, hRaw) <- case configOutputPath of
+      Nothing -> return (IO.stdout, IO.stdout)
       Just path ->
         if path == nullOutputPath
-          then IO.openFile nullOutputPath IO.WriteMode
+          then do
+            h <- IO.openFile nullOutputPath IO.WriteMode
+            hRaw <- IO.openFile nullOutputPath IO.WriteMode
+            return (h, hRaw)
           else do
             let filename = executableName <.> (unpack benchesName) <.> "json"
+            let filenameRaw = executableName <.> (unpack benchesName) <.> "raw" <.> "json"
             createDirectoryIfMissing True path -- Creates the directory if needed.
-            IO.openFile (path </> filename) IO.WriteMode
+            h <- IO.openFile (path </> filename) IO.WriteMode
+            hRaw <- IO.openFile (path </> filenameRaw) IO.WriteMode
+            return (h, hRaw)
     results <- doRun bks
-    let strip
-          | configRaw = id
-          | otherwise = reportMeasurements .~ Nothing
-        report = results & imapped %@~ (analyze (pack executableName) benchesName) & mapped %~ strip
+    let report = results & imapped %@~ (analyze (pack executableName) benchesName)
     now <- getCurrentTime
-    BS.hPutStrLn h $ JSON.encode $ json now Nothing report
+    -- Raw output
+    when configRaw (BS.hPutStrLn hRaw $ JSON.encode $ json now Nothing report)
+    -- Clean output
+    BS.hPutStrLn h $ JSON.encode $ json now Nothing (report & mapped %~ strip)
+    -- Pretty output
     when configPretty (printReports report)
     maybe (return ()) (\_ -> IO.hClose h) configOutputPath
+    maybe (return ()) (\_ -> IO.hClose hRaw) configOutputPath
+  where strip = reportMeasurements .~ Nothing
 
 defaultMainWith
   :: ConfigMonoid -- ^ Preset Hyperion config.
