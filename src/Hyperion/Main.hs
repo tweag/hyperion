@@ -40,6 +40,7 @@ data Mode = Version | List | Run | Analyze
 
 data ConfigMonoid = ConfigMonoid
   { configMonoidOutputPath :: First FilePath
+  , configMonoidOutputDir :: First FilePath
   , configMonoidMode :: First Mode
   , configMonoidPretty :: First Bool
   , configMonoidRaw :: First Bool
@@ -55,12 +56,14 @@ instance Monoid ConfigMonoid where
   mappend c1 c2 =
     ConfigMonoid
       (mappend (configMonoidOutputPath c1) (configMonoidOutputPath c2))
+      (mappend (configMonoidOutputDir c1) (configMonoidOutputDir c2))
       (mappend (configMonoidMode c1) (configMonoidMode c2))
       (mappend (configMonoidPretty c1) (configMonoidPretty c2))
       (mappend (configMonoidRaw c1) (configMonoidRaw c2))
 
 data Config = Config
   { configOutputPath :: Maybe FilePath
+  , configOutputDir :: Maybe FilePath
   , configMode :: Mode
   , configPretty :: Bool
   , configRaw :: Bool
@@ -72,6 +75,7 @@ fromFirst x = fromMaybe x . getFirst
 configFromMonoid :: ConfigMonoid -> Config
 configFromMonoid ConfigMonoid{..} = Config
     { configOutputPath = getFirst configMonoidOutputPath
+    , configOutputDir = getFirst configMonoidOutputDir
     , configMode = fromFirst Analyze configMonoidMode
     , configPretty = fromFirst False configMonoidPretty
     , configRaw = fromFirst False configMonoidRaw
@@ -84,7 +88,7 @@ options = do
          (Options.strOption
             (Options.long "output" <>
              Options.short 'o' <>
-             Options.metavar "FILENAME"))
+             Options.metavar "PATH"))
      configMonoidMode <-
        First <$> optional
          (Options.flag' Version
@@ -139,13 +143,19 @@ doRun bks = do
     -- Better asymptotics than nub.
     unless (length (group (sort nms)) == length nms) $
       throwIO $ DuplicateNames [ n | n:_:_ <- group (sort nms) ]
-    foldMap (runBenchmark (sample 100 (fixed 5))) bks
+    foldMap (runBenchmark (sample 500 (fixed 1))) bks
 
 doAnalyze :: Config -> [Benchmark] -> IO ()
 doAnalyze Config{..} bks = do
     h <- case configOutputPath of
       Nothing -> return IO.stdout
-      Just path -> IO.openFile path IO.WriteMode
+      Just path -> do
+        case isDir path of
+	    True -> do
+                benchName <- getProgName
+                let filename = packageName <> ":" <> benchName <> ".json"
+		IO.openFile (path </> filename) IO.WriteMode
+	    False -> IO.openFile path IO.WriteMode
     results <- doRun bks
     let strip
           | configRaw = id
@@ -156,7 +166,7 @@ doAnalyze Config{..} bks = do
     when configPretty (printReports report)
     maybe (return ()) (\_ -> IO.hClose h) configOutputPath
 
-defaultMainWith :: ConfigMonoid -> [Benchmark] -> IO ()
+defaultMainWith :: ConfigMonoid -> String -> [Benchmark] -> IO ()
 defaultMainWith presetConfig bks = do
     cmdlineConfig <-
       Options.execParser
@@ -171,5 +181,5 @@ defaultMainWith presetConfig bks = do
         Run -> do _ <- doRun bks; return ()
         Analyze -> doAnalyze config bks
 
-defaultMain :: [Benchmark] -> IO ()
+defaultMain :: String -> [Benchmark] -> IO ()
 defaultMain = defaultMainWith defaultConfig

@@ -1,4 +1,6 @@
 resolver: lts-7.14
+compiler: ghc-8.0.2
+
 packages:
 - '.'
 
