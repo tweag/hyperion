@@ -22,7 +22,7 @@ import Hyperion.Measurement (Sample)
 
 data Report = Report
   { _reportBenchName :: !Text
-  , _reportTime :: !Double
+  , _reportTimeInNanos :: !Double
   , _reportCycles :: !(Maybe Double)
   , _reportAlloc :: !(Maybe Int64)
   , _reportGarbageCollections :: !(Maybe Int64)

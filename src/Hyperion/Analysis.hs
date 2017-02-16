@@ -59,7 +59,7 @@ analyze
   -> Report
 analyze name samp = Report
     { _reportBenchName = name
-    , _reportTime =
+    , _reportTimeInNanos =
         mean /
         ala
           Sum
