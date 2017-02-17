@@ -60,19 +60,20 @@ analyze
 analyze name samp = Report
     { _reportBenchName = name
     , _reportTimeInNanos =
-        mean /
-        ala
-          Sum
-          (foldMapOf (measurements.each.batchSize.to realToFrac))
-          samp
+        totalDuration / trueNumIterations
     , _reportCycles = Nothing
     , _reportAlloc = Nothing
     , _reportGarbageCollections = Nothing
     , _reportMeasurements = Just samp
     }
   where
-    mean =
-      samp
-      ^.measurements
-      .to (Unboxed.map (\m -> over both realToFrac (m^.duration, m^.batchSize)))
-      .to meanWeighted
+    totalDuration =
+      ala
+        Sum
+        (foldMapOf (measurements.each.duration.to realToFrac))
+        samp
+    trueNumIterations =
+      ala
+        Sum
+        (foldMapOf (measurements.each.batchSize.to realToFrac))
+        samp
