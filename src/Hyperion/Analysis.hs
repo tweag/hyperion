@@ -12,22 +12,17 @@ import Control.Lens
   , ala
   , foldMapOf
   , folded
-  , (^.)
-  , over
   , to
   )
 import Control.Lens.Each
-import Control.Lens.Traversal (both)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Monoid
 import Data.Traversable (for)
-import qualified Data.Vector.Unboxed as Unboxed
 import Hyperion.Benchmark
 import Hyperion.Internal
 import Hyperion.Measurement
 import Hyperion.Report
-import Statistics.Sample (meanWeighted)
 
 data Component = BenchC Text | GroupC Text | SeriesC Text
 
@@ -60,19 +55,20 @@ analyze
 analyze name samp = Report
     { _reportBenchName = name
     , _reportTimeInNanos =
-        mean /
-        ala
-          Sum
-          (foldMapOf (measurements.each.batchSize.to realToFrac))
-          samp
+        totalDuration / trueNumIterations
     , _reportCycles = Nothing
     , _reportAlloc = Nothing
     , _reportGarbageCollections = Nothing
     , _reportMeasurements = Just samp
     }
   where
-    mean =
-      samp
-      ^.measurements
-      .to (Unboxed.map (\m -> over both realToFrac (m^.duration, m^.batchSize)))
-      .to meanWeighted
+    totalDuration =
+      ala
+        Sum
+        (foldMapOf (measurements.each.duration.to realToFrac))
+        samp
+    trueNumIterations =
+      ala
+        Sum
+        (foldMapOf (measurements.each.batchSize.to realToFrac))
+        samp
