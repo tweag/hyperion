@@ -12,22 +12,17 @@ import Control.Lens
   , ala
   , foldMapOf
   , folded
-  , (^.)
-  , over
   , to
   )
 import Control.Lens.Each
-import Control.Lens.Traversal (both)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Monoid
 import Data.Traversable (for)
-import qualified Data.Vector.Unboxed as Unboxed
 import Hyperion.Benchmark
 import Hyperion.Internal
 import Hyperion.Measurement
 import Hyperion.Report
-import Statistics.Sample (meanWeighted)
 
 data Component = BenchC Text | GroupC Text | SeriesC Text
 
