@@ -26,4 +26,4 @@ benchmarks =
     ]
 
 main :: IO ()
-main = defaultMain benchmarks
+main = defaultMain "example" benchmarks

@@ -19,7 +19,7 @@ import Data.HashMap.Strict (HashMap)
 import Data.List (group, sort)
 import Data.Maybe (fromMaybe)
 import Data.Monoid
-import Data.Text (Text)
+import Data.Text (pack, Text, unpack)
 import qualified Data.Text.IO as Text
 import Data.Time (getCurrentTime)
 import Data.Version (showVersion)
@@ -34,6 +34,9 @@ import qualified Data.Aeson as JSON
 import qualified Options.Applicative as Options
 import Paths_hyperion (version)
 import qualified System.IO as IO
+import System.Directory (createDirectoryIfMissing)
+import System.Environment (getProgName)
+import System.FilePath ((</>), (<.>))
 
 data Mode = Version | List | Run | Analyze
   deriving (Eq, Ord, Show)
@@ -83,6 +86,7 @@ options = do
          (Options.strOption
             (Options.long "output" <>
              Options.short 'o' <>
+             Options.help "Outputs the benchark to the directory" <>
              Options.metavar "PATH"))
      configMonoidMode <-
        First <$> optional
@@ -140,25 +144,20 @@ doRun bks = do
       throwIO $ DuplicateNames [ n | n:_:_ <- group (sort nms) ]
     foldMap (runBenchmark (sample 500 (fixed 1))) bks
 
-getProgName :: IO String
-getProgName = return "coucou"
-
-doAnalyze :: Config -> [Benchmark] -> IO ()
+doAnalyze :: Config -> Text -> [Benchmark] -> IO ()
 doAnalyze Config{..} packageName bks = do
     h <- case configOutputPath of
       Nothing -> return IO.stdout
       Just path -> do
-        case isDir path of
-	        True -> do
-                    benchName <- getProgName
-                    let filename = packageName <.> benchName <.> "json"
-                    IO.openFile (path </> filename) IO.WriteMode
-	        False -> IO.openFile path IO.WriteMode
+        benchName <- getProgName
+        let filename = (unpack packageName) <.> benchName <.> "json"
+        createDirectoryIfMissing True path -- Creates the directory if needed.
+        IO.openFile (path </> filename) IO.WriteMode
     results <- doRun bks
     let strip
           | configRaw = id
           | otherwise = reportMeasurements .~ Nothing
-        report = results & imapped %@~ analyze & mapped %~ strip
+        report = results & imapped %@~ (analyze packageName) & mapped %~ strip
     now <- getCurrentTime
     BS.hPutStrLn h $ JSON.encode $ json now Nothing report
     when configPretty (printReports report)
@@ -177,7 +176,7 @@ defaultMainWith presetConfig packageName bks = do
         Version -> putStrLn $ "Hyperion " <> showVersion version
         List -> doList bks
         Run -> do _ <- doRun bks; return ()
-        Analyze -> doAnalyze config packageName bks
+        Analyze -> doAnalyze config (pack packageName) bks
 
 defaultMain :: String -> [Benchmark] -> IO ()
 defaultMain = defaultMainWith defaultConfig
