@@ -145,26 +145,26 @@ doRun bks = do
     foldMap (runBenchmark (sample 100 (fixed 5))) bks
 
 doAnalyze :: Config -> Text -> [Benchmark] -> IO ()
-doAnalyze Config{..} packageName bks = do
+doAnalyze Config{..} benchName bks = do
+    packageName <- getProgName
     h <- case configOutputPath of
       Nothing -> return IO.stdout
       Just path -> do
-        benchName <- getProgName
-        let filename = (unpack packageName) <.> benchName <.> "json"
+        let filename = packageName <.> (unpack benchName) <.> "json"
         createDirectoryIfMissing True path -- Creates the directory if needed.
         IO.openFile (path </> filename) IO.WriteMode
     results <- doRun bks
     let strip
           | configRaw = id
           | otherwise = reportMeasurements .~ Nothing
-        report = results & imapped %@~ (analyze packageName) & mapped %~ strip
+        report = results & imapped %@~ (analyze (pack packageName)) & mapped %~ strip
     now <- getCurrentTime
     BS.hPutStrLn h $ JSON.encode $ json now Nothing report
     when configPretty (printReports report)
     maybe (return ()) (\_ -> IO.hClose h) configOutputPath
 
 defaultMainWith :: ConfigMonoid -> String -> [Benchmark] -> IO ()
-defaultMainWith presetConfig packageName bks = do
+defaultMainWith presetConfig benchName bks = do
     cmdlineConfig <-
       Options.execParser
         (Options.info
@@ -176,7 +176,7 @@ defaultMainWith presetConfig packageName bks = do
         Version -> putStrLn $ "Hyperion " <> showVersion version
         List -> doList bks
         Run -> do _ <- doRun bks; return ()
-        Analyze -> doAnalyze config (pack packageName) bks
+        Analyze -> doAnalyze config (pack benchName) bks
 
 defaultMain :: String -> [Benchmark] -> IO ()
 defaultMain = defaultMainWith defaultConfig
