@@ -25,4 +25,5 @@ benchmarks =
         [ bench "ping" (nfIO (system "ping -c1 8.8.8.8 > /dev/null")) ]
     ]
 
+main :: IO ()
 main = defaultMain benchmarks

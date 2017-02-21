@@ -46,6 +46,17 @@ library
     unordered-containers >= 0.2,
     vector >= 0.11
   default-language: Haskell2010
+  ghc-options:         -Wall
+
+executable hyperion-example
+  hs-source-dirs:      examples
+  main-is:             Main.hs
+  build-depends:
+    base,
+    hyperion,
+    process
+  default-language:    Haskell2010
+  ghc-options:         -Wall
 
 test-suite spec
   type:
