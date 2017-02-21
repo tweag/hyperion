@@ -142,7 +142,7 @@ doRun bks = do
     -- Better asymptotics than nub.
     unless (length (group (sort nms)) == length nms) $
       throwIO $ DuplicateNames [ n | n:_:_ <- group (sort nms) ]
-    foldMap (runBenchmark (sample 500 (fixed 1))) bks
+    foldMap (runBenchmark (sample 100 (fixed 5))) bks
 
 doAnalyze :: Config -> Text -> [Benchmark] -> IO ()
 doAnalyze Config{..} packageName bks = do
