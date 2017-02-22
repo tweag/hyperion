@@ -133,13 +133,13 @@ instance Show DuplicateNames where
 doList :: [Benchmark] -> IO ()
 doList bks = mapM_ Text.putStrLn $ bks^..folded.namesOf
 
-doRun :: [Benchmark] -> IO (HashMap Text Sample)
+doRun :: [Benchmark] -> IO (HashMap Text [Sample])
 doRun bks = do
     let nms = bks^..folded.namesOf
     -- Better asymptotics than nub.
     unless (length (group (sort nms)) == length nms) $
       throwIO $ DuplicateNames [ n | n:_:_ <- group (sort nms) ]
-    foldMap (runBenchmark (sample 100 (fixed 5))) bks
+    foldMap (runBenchmarkVaryingSizes (samples 100 (fixedBatchSizes [1, 5, 10]))) bks
 
 doAnalyze :: Config -> [Benchmark] -> IO ()
 doAnalyze Config{..} bks = do
@@ -150,7 +150,7 @@ doAnalyze Config{..} bks = do
     let strip
           | configRaw = id
           | otherwise = reportMeasurements .~ Nothing
-        report = results & imapped %@~ analyze & mapped %~ strip
+        report = results & imapped %@~ analyzeMultipleSamples & mapped %~ (mapped %~ strip)
     now <- getCurrentTime
     BS.hPutStrLn h $ JSON.encode $ json now Nothing report
     when configPretty (printReports report)

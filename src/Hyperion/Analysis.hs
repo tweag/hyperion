@@ -3,7 +3,7 @@
 
 module Hyperion.Analysis
   ( namesOf
-  , analyze
+  , analyzeMultipleSamples
   ) where
 
 import Control.Lens
@@ -47,6 +47,14 @@ namesOf = go []
 
     coerce :: (Contravariant f, Applicative f) => f a -> f b
     coerce = contramap (const ()) . fmap (const ())
+
+
+analyzeMultipleSamples
+  :: Text -- ^ Benchmark name
+  -> [Sample] -- ^ Measurements
+  -> [Report]
+analyzeMultipleSamples name samples =
+    map (\sample -> analyze name sample) samples
 
 analyze
   :: Text -- ^ Benchmark name
