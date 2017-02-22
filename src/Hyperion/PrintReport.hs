@@ -19,4 +19,4 @@ formatReport report =
 
 printReports :: HashMap Text Report -> IO ()
 printReports report = do
-  putDoc $ mconcat $ map formatReport (elems report)
+  putDoc $ foldMap formatReport (elems report)
