@@ -54,6 +54,7 @@ instance Monoid ConfigMonoid where
       mempty
       mempty
       mempty
+      mempty
   mappend c1 c2 =
     ConfigMonoid
       (mappend (configMonoidOutputPath c1) (configMonoidOutputPath c2))
@@ -144,27 +145,38 @@ doRun bks = do
       throwIO $ DuplicateNames [ n | n:_:_ <- group (sort nms) ]
     foldMap (runBenchmark (sample 100 (fixed 5))) bks
 
-doAnalyze :: Config -> Text -> [Benchmark] -> IO ()
-doAnalyze Config{..} benchName bks = do
+doAnalyze
+  :: Config -- ^ Hyperion config.
+  -> Text -- ^ Benchmarks name.
+  -> [Benchmark] -- ^ Benchmarks to be run.
+  -> IO ()
+doAnalyze Config{..} benchesName bks = do
     executableName <- getProgName -- Name of the execuatble that launched the benches.
     h <- case configOutputPath of
       Nothing -> return IO.stdout
-      Just path -> do
-        let filename = executableName <.> (unpack benchName) <.> "json"
-        createDirectoryIfMissing True path -- Creates the directory if needed.
-        IO.openFile (path </> filename) IO.WriteMode
+      Just path ->
+        if path == nullOutputPath
+          then IO.openFile nullOutputPath IO.WriteMode
+          else do
+            let filename = executableName <.> (unpack benchesName) <.> "json"
+            createDirectoryIfMissing True path -- Creates the directory if needed.
+            IO.openFile (path </> filename) IO.WriteMode
     results <- doRun bks
     let strip
           | configRaw = id
           | otherwise = reportMeasurements .~ Nothing
-        report = results & imapped %@~ (analyze (pack executableName)) & mapped %~ strip
+        report = results & imapped %@~ (analyze (pack executableName) benchesName) & mapped %~ strip
     now <- getCurrentTime
     BS.hPutStrLn h $ JSON.encode $ json now Nothing report
     when configPretty (printReports report)
     maybe (return ()) (\_ -> IO.hClose h) configOutputPath
 
-defaultMainWith :: ConfigMonoid -> String -> [Benchmark] -> IO ()
-defaultMainWith presetConfig benchName bks = do
+defaultMainWith
+  :: ConfigMonoid -- ^ Preset Hyperion config.
+  -> String -- ^ Benchmarks name.
+  -> [Benchmark] -- ^ Benchmarks to be run.
+  -> IO ()
+defaultMainWith presetConfig benchesName bks = do
     cmdlineConfig <-
       Options.execParser
         (Options.info
@@ -176,7 +188,10 @@ defaultMainWith presetConfig benchName bks = do
         Version -> putStrLn $ "Hyperion " <> showVersion version
         List -> doList bks
         Run -> do _ <- doRun bks; return ()
-        Analyze -> doAnalyze config (pack benchName) bks
+        Analyze -> doAnalyze config (pack benchesName) bks
 
-defaultMain :: String -> [Benchmark] -> IO ()
+defaultMain
+  :: String -- ^ Benchmarks name.
+  -> [Benchmark] -- ^ Benchmarks to be run.
+  -> IO ()
 defaultMain = defaultMainWith defaultConfig

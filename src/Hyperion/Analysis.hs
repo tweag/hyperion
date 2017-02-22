@@ -49,12 +49,13 @@ namesOf = go []
     coerce = contramap (const ()) . fmap (const ())
 
 analyze
-  :: Text -- ^ Package name
-  -> Text -- ^ Benchmark name
-  -> Sample -- ^ Measurements
+  :: Text -- ^ Executable name.
+  -> Text -- ^ Benchmarks name.
+  -> Text -- ^ Benchmark name.
+  -> Sample -- ^ Measurements.
   -> Report
-analyze packageName name samp = Report
-    { _reportBenchName = Text.concat [packageName, ":", name]
+analyze executableName benchesName name samp = Report
+    { _reportBenchName = Text.concat [executableName, ".", benchesName, ".", name]
     , _reportTimeInNanos =
         totalDuration / trueNumIterations
     , _reportCycles = Nothing
