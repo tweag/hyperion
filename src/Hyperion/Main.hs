@@ -146,18 +146,18 @@ doRun bks = do
 
 doAnalyze :: Config -> Text -> [Benchmark] -> IO ()
 doAnalyze Config{..} benchName bks = do
-    packageName <- getProgName
+    executableName <- getProgName -- Name of the execuatble that launched the benches.
     h <- case configOutputPath of
       Nothing -> return IO.stdout
       Just path -> do
-        let filename = packageName <.> (unpack benchName) <.> "json"
+        let filename = executableName <.> (unpack benchName) <.> "json"
         createDirectoryIfMissing True path -- Creates the directory if needed.
         IO.openFile (path </> filename) IO.WriteMode
     results <- doRun bks
     let strip
           | configRaw = id
           | otherwise = reportMeasurements .~ Nothing
-        report = results & imapped %@~ (analyze (pack packageName)) & mapped %~ strip
+        report = results & imapped %@~ (analyze (pack executableName)) & mapped %~ strip
     now <- getCurrentTime
     BS.hPutStrLn h $ JSON.encode $ json now Nothing report
     when configPretty (printReports report)
