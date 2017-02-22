@@ -14,7 +14,7 @@ module Hyperion.Main
 import Control.Applicative
 import Control.Exception (Exception, throwIO)
 import Control.Lens ((&), (.~), (%~), (%@~), (^..), folded, imapped, mapped)
-import Control.Monad (unless)
+import Control.Monad (unless, when)
 import Data.HashMap.Strict (HashMap)
 import Data.List (group, sort)
 import Data.Maybe (fromMaybe)
@@ -26,6 +26,7 @@ import Data.Version (showVersion)
 import Hyperion.Analysis
 import Hyperion.Benchmark
 import Hyperion.Measurement
+import Hyperion.PrintReport
 import Hyperion.Report
 import Hyperion.Run
 import qualified Data.ByteString.Lazy.Char8 as BS
@@ -40,6 +41,7 @@ data Mode = Version | List | Run | Analyze
 data ConfigMonoid = ConfigMonoid
   { configMonoidOutputPath :: First FilePath
   , configMonoidMode :: First Mode
+  , configMonoidPretty :: First Bool
   , configMonoidRaw :: First Bool
   }
 
@@ -49,15 +51,18 @@ instance Monoid ConfigMonoid where
       mempty
       mempty
       mempty
+      mempty
   mappend c1 c2 =
     ConfigMonoid
       (mappend (configMonoidOutputPath c1) (configMonoidOutputPath c2))
       (mappend (configMonoidMode c1) (configMonoidMode c2))
+      (mappend (configMonoidPretty c1) (configMonoidPretty c2))
       (mappend (configMonoidRaw c1) (configMonoidRaw c2))
 
 data Config = Config
   { configOutputPath :: Maybe FilePath
   , configMode :: Mode
+  , configPretty :: Bool
   , configRaw :: Bool
   }
 
@@ -68,6 +73,7 @@ configFromMonoid :: ConfigMonoid -> Config
 configFromMonoid ConfigMonoid{..} = Config
     { configOutputPath = getFirst configMonoidOutputPath
     , configMode = fromFirst Analyze configMonoidMode
+    , configPretty = fromFirst False configMonoidPretty
     , configRaw = fromFirst False configMonoidRaw
     }
 
@@ -95,6 +101,11 @@ options = do
           Options.flag' Run
             (Options.long "no-analyze" <>
              Options.help "Only run the benchmarks"))
+     configMonoidPretty <-
+       First <$> optional
+         (Options.switch
+            (Options.long "pretty" <>
+             Options.help "Pretty prints the measurements on stdout."))
      configMonoidRaw <-
        First <$> optional
          (Options.switch
@@ -142,6 +153,7 @@ doAnalyze Config{..} bks = do
         report = results & imapped %@~ analyze & mapped %~ strip
     now <- getCurrentTime
     BS.hPutStrLn h $ JSON.encode $ json now Nothing report
+    when configPretty (printReports report)
     maybe (return ()) (\_ -> IO.hClose h) configOutputPath
 
 defaultMainWith :: ConfigMonoid -> [Benchmark] -> IO ()
