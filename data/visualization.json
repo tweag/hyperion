@@ -1,0 +1,41 @@
+[
+  {
+    "_id": "Percentiles-with-multiple-benches",
+    "_type": "visualization",
+    "_source": {
+      "title": "Percentiles with multiple benches",
+      "visState": "{\"type\":\"histogram\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"scale\":\"linear\",\"mode\":\"grouped\",\"times\":[],\"addTimeMarker\":false,\"defaultYExtents\":false,\"setYExtents\":false,\"yAxis\":{}},\"aggs\":[{\"id\":\"1\",\"type\":\"percentiles\",\"schema\":\"metric\",\"params\":{\"field\":\"results.measurements.duration\",\"percents\":[1,5,25,50,75,95]}},{\"id\":\"3\",\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"results.name\",\"size\":5,\"order\":\"desc\",\"orderBy\":\"1.1\"}}],\"listeners\":{}}",
+      "description": "",
+      "version": 1,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"index\":\"hyperion\",\"query\":{\"query_string\":{\"query\":\"*\",\"analyze_wildcard\":true}},\"filter\":[]}"
+      }
+    }
+  },
+  {
+    "_id": "Quantiles-over-time-bar-plot-95lie-and-99lie",
+    "_type": "visualization",
+    "_source": {
+      "title": "Quantiles over time - bar plot - 95lie and 99lie",
+      "visState": "{\"type\":\"histogram\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"scale\":\"linear\",\"mode\":\"grouped\",\"times\":[],\"addTimeMarker\":false,\"defaultYExtents\":false,\"setYExtents\":false,\"yAxis\":{}},\"aggs\":[{\"id\":\"1\",\"type\":\"percentiles\",\"schema\":\"metric\",\"params\":{\"field\":\"results.measurements.duration\",\"percents\":[95,99]}},{\"id\":\"2\",\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"metadata.timestamp\",\"interval\":\"auto\",\"customInterval\":\"2h\",\"min_doc_count\":1,\"extended_bounds\":{}}}],\"listeners\":{}}",
+      "description": "",
+      "version": 1,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"index\":\"hyperion\",\"query\":{\"query_string\":{\"query\":\"*\",\"analyze_wildcard\":true}},\"filter\":[]}"
+      }
+    }
+  },
+  {
+    "_id": "Quantiles-over-time-line-plot-95lie-and-99lie",
+    "_type": "visualization",
+    "_source": {
+      "title": "Quantiles over time - line plot - 95lie and 99lie",
+      "visState": "{\"type\":\"line\",\"params\":{\"shareYAxis\":true,\"addTooltip\":true,\"addLegend\":true,\"showCircles\":true,\"smoothLines\":false,\"interpolate\":\"linear\",\"scale\":\"linear\",\"drawLinesBetweenPoints\":true,\"radiusRatio\":9,\"times\":[],\"addTimeMarker\":false,\"defaultYExtents\":false,\"setYExtents\":false,\"yAxis\":{},\"spyPerPage\":10},\"aggs\":[{\"id\":\"1\",\"type\":\"percentiles\",\"schema\":\"metric\",\"params\":{\"field\":\"results.measurements.duration\",\"percents\":[50,95,99]}},{\"id\":\"2\",\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"metadata.timestamp\",\"interval\":\"d\",\"customInterval\":\"2h\",\"min_doc_count\":1,\"extended_bounds\":{}}}],\"listeners\":{}}",
+      "description": "",
+      "version": 1,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"index\":\"hyperion\",\"query\":{\"query_string\":{\"query\":\"*\",\"analyze_wildcard\":true}},\"filter\":[]}"
+      }
+    }
+  }
+]
