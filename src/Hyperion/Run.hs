@@ -8,6 +8,7 @@
 module Hyperion.Run
   ( -- * Run benchmarks
     runBenchmark
+  , runBenchmarkWithConfig
     -- * Benchmark transformations
   , shuffle
   , reorder
@@ -64,13 +65,18 @@ instance (Monad m, Monoid a) => Monoid (StateT' s m a) where
   mempty = lift (return mempty)
   mappend m1 m2 = mappend <$> m1 <*> m2
 
-runBenchmark :: (Batch () -> IO Sample) -> Benchmark -> IO (HashMap Text Sample)
-runBenchmark samplef bk0 =
+-- | Runs the benchmarks with the provided config.
+-- Only to be used if the default running configuration does not suit you.
+runBenchmarkWithConfig
+  :: (Batch () -> IO Sample) -- ^ Batch and sampling strategy.
+  -> Benchmark -- ^ Benchmark to be run.
+  -> IO (HashMap Text Sample)
+runBenchmarkWithConfig samplingConf bk0 =
   -- Ignore the names we find. Use fully qualified names accumulated from the
   -- lens defined above. The order is DFS in both cases.
   evalStateT (unStateT' (go bk0)) (foldMapOf namesOf return bk0)
   where
-    go (Bench _ batch) = HashMap.singleton <$> pop <*> lift (samplef batch)
+    go (Bench _ batch) = HashMap.singleton <$> pop <*> lift (samplingConf batch)
     go (Group _ bks) = foldMap go bks
     go (Bracket ini fini g) =
       bracket (lift ini) (lift . fini) (go . g . Resource)
@@ -80,6 +86,11 @@ runBenchmark samplef bk0 =
       x :< xs <- viewl <$> get
       put xs
       return x
+
+-- | Default way of running benchmarks.
+-- Default is 100 samples of size 5.
+runBenchmark :: Benchmark -> IO (HashMap Text Sample)
+runBenchmark = runBenchmarkWithConfig (sample 100 (fixed 5))
 
 -- | Convenience wrapper around 'SRS.shuffle'.
 shuffle :: RandomGen g => g -> [a] -> [a]
