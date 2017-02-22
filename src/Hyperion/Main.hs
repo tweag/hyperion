@@ -105,7 +105,7 @@ options = do
        First <$> optional
          (Options.switch
             (Options.long "pretty" <>
-             Options.help "Pretty prints the measurements of the benchmark."))
+             Options.help "Pretty prints the measurements on stdout."))
      configMonoidRaw <-
        First <$> optional
          (Options.switch

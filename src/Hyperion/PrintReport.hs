@@ -15,10 +15,9 @@ import Text.PrettyPrint.ANSI.Leijen
 printReport :: Report -> IO ()
 printReport report = do
     putDoc $ green (bold (text (unpack (view reportBenchName report)))) <> line
-    putDoc $
-       (indent 2 $ text ("Bench time: " ++ (show (view reportTimeInNanos report)) ++ "ns")) <> line
+           <> (indent 2 $ text ("Bench time: " ++ (show (view reportTimeInNanos report)) ++ "ns"))
+           <> line
 
 printReports :: HashMap Text Report -> IO ()
 printReports report = do
-  _ <- forM_ (elems report) printReport
-  return ()
+  forM_ (elems report) printReport
