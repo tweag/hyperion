@@ -15,6 +15,7 @@ module Hyperion.Run
     -- * strategies
   , fixed
   , sample
+  , geometricBatches
   ) where
 
 import Control.Lens (foldMapOf)
@@ -38,24 +39,6 @@ import qualified System.Clock as Clock
 import System.Random (RandomGen(..))
 import qualified System.Random.Shuffle as SRS
 
--- | Time an action.
-chrono :: IO () -> IO Int64
-chrono act = do
-  start <- Clock.getTime Clock.Monotonic
-  act
-  end <- Clock.getTime Clock.Monotonic
-  return $ fromIntegral $ Clock.toNanoSecs $ Clock.diffTimeSpec start end
-
--- | Sample once a batch of fixed size.
-fixed :: Int64 -> Batch () -> IO Sample
-fixed _batchSize batch = do
-    _duration <- chrono $ runBatch batch _batchSize
-    return $ Sample $ Unboxed.singleton Measurement{..}
-
--- | Run a sampling strategy @n@ times.
-sample :: Int64 -> (Batch () -> IO Sample) -> Batch () -> IO Sample
-sample n f batch = mconcat <$> replicateM (fromIntegral n) (f batch)
-
 -- | Local private copy of 'StateT' to hang our otherwise orphan 'Monoid'
 -- instance to. This instance is missing from transformers.
 newtype StateT' s m a = StateT' { unStateT' :: StateT s m a }
@@ -64,6 +47,12 @@ newtype StateT' s m a = StateT' { unStateT' :: StateT s m a }
 instance (Monad m, Monoid a) => Monoid (StateT' s m a) where
   mempty = lift (return mempty)
   mappend m1 m2 = mappend <$> m1 <*> m2
+
+-- | Default way of running benchmarks.
+-- Default is 100 samples, for each batch size from 1 to 20 with a geometric
+-- progression of 1.2.
+runBenchmark :: Benchmark -> IO (HashMap Text Sample)
+runBenchmark = runBenchmarkWithConfig (geometricBatches 100 20 1.2)
 
 -- | Runs the benchmarks with the provided config.
 -- Only to be used if the default running configuration does not suit you.
@@ -87,10 +76,59 @@ runBenchmarkWithConfig samplingConf bk0 =
       put xs
       return x
 
--- | Default way of running benchmarks.
--- Default is 100 samples of size 5.
-runBenchmark :: Benchmark -> IO (HashMap Text Sample)
-runBenchmark = runBenchmarkWithConfig (sample 100 (fixed 5))
+-- | Time an action.
+chrono :: IO () -> IO Int64
+chrono act = do
+    start <- Clock.getTime Clock.Monotonic
+    act
+    end <- Clock.getTime Clock.Monotonic
+    return $ fromIntegral $ Clock.toNanoSecs $ Clock.diffTimeSpec start end
+
+-- | Sample once a batch of fixed size.
+fixed :: Int64 -> Batch () -> IO Sample
+fixed _batchSize batch = do
+    _duration <- chrono $ runBatch batch _batchSize
+    return $ Sample $ Unboxed.singleton Measurement{..}
+
+-- | Run a sampling strategy @n@ times.
+sample :: Int64 -> (Batch () -> IO Sample) -> Batch () -> IO Sample
+sample n f batch = mconcat <$> replicateM (fromIntegral n) (f batch)
+
+-- | Batching strategy, following a geometric progression from 1
+-- to the provided limit, with the given ratio.
+geometricBatches
+    :: Int64 -- ^ Sample size.
+    -> Int64 -- ^ Max batch size.
+    -> Double -- ^ Ratio of geometric progression.
+    -> Batch ()
+    -> IO Sample
+geometricBatches nSamples limit ratio batch =
+    mconcat <$>
+      (traverse
+        (\size -> sample nSamples (fixed size) batch)
+        (geometricSeries ratio limit)
+      )
+
+geometricSeries
+    :: Double -- ^ Geometric progress.
+    -> Int64 -- ^ End of the series.
+    -> [Int64]
+geometricSeries ratio limit =
+    if ratio > 1
+    then
+      takeWhile (<= limit) $
+      squish $
+      map truncate $
+      map (ratio^) ([1..] :: [Int])
+    else
+      error "Geometric ratio must be bigger than 1"
+
+-- | Our series starts its growth very slowly when we begin at 1, so we
+-- eliminate repeated values.
+-- NOTE: taken from Criterion.
+squish :: (Eq a) => [a] -> [a]
+squish ys = foldr go [] ys
+  where go x xs = x : dropWhile (==x) xs
 
 -- | Convenience wrapper around 'SRS.shuffle'.
 shuffle :: RandomGen g => g -> [a] -> [a]
