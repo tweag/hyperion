@@ -49,8 +49,8 @@ namesOf = go []
     coerce = contramap (const ()) . fmap (const ())
 
 analyze
-  :: Text -- ^ Benchmark name
-  -> Sample -- ^ Measurements
+  :: Text -- ^ Benchmark name.
+  -> Sample -- ^ Measurements.
   -> Report
 analyze name samp = Report
     { _reportBenchName = name
