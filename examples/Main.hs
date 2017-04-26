@@ -6,6 +6,7 @@
 module Main where
 
 import Hyperion.Benchmark
+import Hyperion.Run
 import Hyperion.Main
 import System.Process (system)
 
@@ -21,9 +22,11 @@ benchmarks =
           [ bench "fact" (use n >>= nf fact)
           , bench "fib" (use n >>= nf fib)
           ]
-    , bgroup "roundrip"
+    , withSampling (timebounded (repeat 10) fiveSecs) $ bgroup "roundrip"
         [ bench "ping" (nfIO (system "ping -c1 8.8.8.8 > /dev/null")) ]
     ]
+  where
+    fiveSecs = 5 * 1000 * 1000 * 1000 -- in nanoseconds
 
 main :: IO ()
 main = defaultMain "hyperion-example-package" benchmarks
