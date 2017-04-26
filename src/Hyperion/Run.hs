@@ -17,7 +17,7 @@ module Hyperion.Run
   , sample
   , geometricBatches
   , timebounded
-    -- * strategie helpers
+    -- * strategy helpers
   , geometricSeries
   ) where
 
