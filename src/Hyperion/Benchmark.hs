@@ -63,7 +63,12 @@ bgroup name bks = Group (Text.pack name) bks
 series :: Show a => Vector a -> (Env a -> Benchmark) -> Benchmark
 series = Series
 
-withSampling :: (Batch () -> IO Sample) -> Benchmark -> Benchmark
+-- | Set the sampling strategy for the given 'Benchmark'. The sampling strategy
+-- specifies how to (create a) 'Sample' for a given 'Batch'.
+withSampling
+  :: (Batch () -> IO Sample) -- ^ sampling strategy
+  -> Benchmark -- ^ 'Benchmark' sampled
+  -> Benchmark
 withSampling = WithSampling
 
 env

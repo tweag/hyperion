@@ -98,7 +98,16 @@ fixed _batchSize batch = do
 sample :: Int64 -> (Batch () -> IO Sample) -> Batch () -> IO Sample
 sample n f batch = mconcat <$> replicateM (fromIntegral n) (f batch)
 
-timebounded :: [Int64] -> Clock.TimeSpec -> Batch () -> IO Sample
+-- | Sampling strategy that creates samples of the specified sizes with a time
+-- bound. Sampling stops when either a sample has been sampled for each size or
+-- when the total benchmark time is greater than the specified time bound.
+--
+-- The actual amount of time spent may be longer since hyperion will always
+-- wait for a 'Sample' of a given size to complete.
+timebounded
+  :: [Int64] -- ^ Sample sizes; may be infinite
+  -> Clock.TimeSpec -- ^ Time bound
+  -> Batch () -> IO Sample
 timebounded batchSizes maxTime batch = do
     start <- Clock.getTime Clock.Monotonic
     go start batchSizes mempty
