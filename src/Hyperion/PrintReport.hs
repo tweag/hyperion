@@ -5,6 +5,7 @@
 
 module Hyperion.PrintReport (printReports) where
 
+import Numeric
 import Control.Lens (view)
 import Data.Text (Text, unpack)
 import Data.HashMap.Strict (elems, HashMap)
@@ -14,8 +15,19 @@ import Text.PrettyPrint.ANSI.Leijen
 formatReport :: Report -> Doc
 formatReport report =
            green (bold (text (unpack (view reportBenchName report)))) <> line
-           <> (indent 2 $ text ("Bench time: " ++ (show (view reportTimeInNanos report)) ++ "ns"))
+           <> (indent 2 $ text ("Bench time: " ++ prettyNanos (view reportTimeInNanos report)))
            <> line
+  where
+    show2decs x= showFFloat (Just 2) x ""
+    prettyNanos :: Double -> String
+    prettyNanos x
+      -- seconds
+      | x > 1e9 = show2decs (x/1e9) ++ "s"
+      -- milliseconds
+      | x > 1e6 = show2decs (x/1e6) ++ "ms"
+      -- microseconds
+      | x > 1e3 = show2decs (x/1e3) ++ "us"
+      | otherwise = show2decs x ++ "ns"
 
 printReports :: HashMap Text Report -> IO ()
 printReports report = do
