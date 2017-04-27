@@ -16,6 +16,9 @@ module Hyperion.Run
   , fixed
   , sample
   , geometricBatches
+  , timebounded
+    -- * strategy helpers
+  , geometricSeries
   ) where
 
 import Control.Lens (foldMapOf)
@@ -63,13 +66,14 @@ runBenchmarkWithConfig
 runBenchmarkWithConfig samplingConf bk0 =
   -- Ignore the names we find. Use fully qualified names accumulated from the
   -- lens defined above. The order is DFS in both cases.
-  evalStateT (unStateT' (go bk0)) (foldMapOf namesOf return bk0)
+  evalStateT (unStateT' (go samplingConf bk0)) (foldMapOf namesOf return bk0)
   where
-    go (Bench _ batch) = HashMap.singleton <$> pop <*> lift (samplingConf batch)
-    go (Group _ bks) = foldMap go bks
-    go (Bracket ini fini g) =
-      bracket (lift ini) (lift . fini) (go . g . Resource)
-    go (Series xs g) = foldMap (go . g . Resource) xs
+    go cfg (Bench _ batch) = HashMap.singleton <$> pop <*> lift (cfg batch)
+    go cfg (Group _ bks) = foldMap (go cfg) bks
+    go cfg (Bracket ini fini g) =
+      bracket (lift ini) (lift . fini) (go cfg . g . Resource)
+    go cfg (Series xs g) = foldMap (go cfg . g . Resource) xs
+    go _cfg (WithSampling cfg bk) = go cfg bk
 
     pop = do
       x :< xs <- viewl <$> get
@@ -93,6 +97,29 @@ fixed _batchSize batch = do
 -- | Run a sampling strategy @n@ times.
 sample :: Int64 -> (Batch () -> IO Sample) -> Batch () -> IO Sample
 sample n f batch = mconcat <$> replicateM (fromIntegral n) (f batch)
+
+-- | Sampling strategy that creates samples of the specified sizes with a time
+-- bound. Sampling stops when either a sample has been sampled for each size or
+-- when the total benchmark time is greater than the specified time bound.
+--
+-- The actual amount of time spent may be longer since hyperion will always
+-- wait for a 'Sample' of a given size to complete.
+timebounded
+  :: [Int64] -- ^ Sample sizes; may be infinite
+  -> Clock.TimeSpec -- ^ Time bound
+  -> Batch () -> IO Sample
+timebounded batchSizes maxTime batch = do
+    start <- Clock.getTime Clock.Monotonic
+    go start batchSizes mempty
+  where
+    go start (_batchSize:bss) smpl = do
+      _duration <- chrono $ runBatch batch _batchSize
+      let smpl' = smpl `mappend` (Sample $ Unboxed.singleton Measurement{..})
+      now <- Clock.getTime Clock.Monotonic
+      if Clock.diffTimeSpec start now > maxTime
+        then return smpl'
+        else go start bss smpl'
+    go _ _ s = return s
 
 -- | Batching strategy, following a geometric progression from 1
 -- to the provided limit, with the given ratio.
@@ -141,6 +168,7 @@ reorder :: RandomGen g => g -> (g -> [Benchmark] -> [Benchmark]) -> Benchmark ->
 reorder gen0 shuf = go gen0
   where
     go _ bk@(Bench _ _) = bk
+    go _ bk@(WithSampling _ _) = bk
     go gen (Group name bks) = Group name (shuf gen (zipWith go (splitn (length bks) gen) bks))
     go gen (Bracket ini fini f) = Bracket ini fini (\x -> go gen (f x))
     go gen (Series xs f) = Series xs (\x -> go gen (f x))
