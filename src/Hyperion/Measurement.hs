@@ -1,5 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -10,11 +11,20 @@ module Hyperion.Measurement
   , duration
   , Sample(..)
   , measurements
+  , Metadata(..)
+  , userData
+  , benchmarkName
   ) where
 
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Aeson.TH
+import qualified Data.Aeson.Types as JSON
 import Data.Int
+import Data.Monoid
+import Data.String (IsString(..))
+import Data.Text (Text)
+import qualified Data.Text as Text
+import Data.Hashable (Hashable(..))
 import Control.Lens.TH (makeLenses)
 import Control.Monad (liftM)
 import qualified Data.Vector.Generic as GV
@@ -37,6 +47,25 @@ makeLenses ''Sample
 
 deriving instance FromJSON Sample
 deriving instance ToJSON Sample
+
+
+data Metadata = Metadata
+  { _userData :: [JSON.Pair]
+  , _benchmarkName :: Text
+  }
+  deriving Eq
+makeLenses ''Metadata
+
+instance Monoid Metadata where
+  mempty = Metadata [] ""
+  mappend md md' = Metadata (_userData md <> _userData md') (_benchmarkName md <> _benchmarkName md')
+
+instance Hashable Metadata where
+  -- TODO: say it's OK
+  hashWithSalt x = hashWithSalt x . _userData
+
+instance IsString Metadata where
+  fromString str = mempty { _benchmarkName = Text.pack str } -- TODO: remove
 
 newtype instance UV.MVector s Measurement = MV_Measurement (UV.MVector s (Int64, Int64))
 newtype instance UV.Vector Measurement = V_Measurement  (UV.Vector (Int64, Int64))

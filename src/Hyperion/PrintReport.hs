@@ -10,6 +10,7 @@ import Control.Lens (view)
 import Data.Text (Text, unpack)
 import Data.HashMap.Strict (elems, HashMap)
 import Hyperion.Report
+import Hyperion.Measurement (Metadata)
 import Text.PrettyPrint.ANSI.Leijen
 
 formatReport :: Report -> Doc
@@ -29,6 +30,6 @@ formatReport report =
       | x > 1e3 = show2decs (x/1e3) ++ "us"
       | otherwise = show2decs x ++ "ns"
 
-printReports :: HashMap Text Report -> IO ()
+printReports :: HashMap Metadata Report -> IO ()
 printReports report = do
   putDoc $ foldMap formatReport (elems report)

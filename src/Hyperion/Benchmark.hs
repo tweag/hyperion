@@ -5,6 +5,7 @@ module Hyperion.Benchmark
   ( -- * Benchmarks
     Benchmark(..)
   , bench
+  , benchWith
   , bgroup
   , env
   , series
@@ -23,6 +24,7 @@ module Hyperion.Benchmark
 
 import Control.Exception (evaluate)
 import Control.Monad.State.Strict (modify')
+import qualified Data.Aeson.Types as JSON
 import Data.Monoid
 import Data.Vector (Vector)
 import Data.Int (Int64)
@@ -33,7 +35,7 @@ import Hyperion.Internal
 import Hyperion.Measurement
 
 data Benchmark where
-  Bench :: Text -> Batch () -> Benchmark
+  Bench :: (a -> Text) -> (a -> [JSON.Pair]) -> (a -> b) -> (b -> Batch ()) -> a -> Benchmark
   Group :: Text -> [Benchmark] -> Benchmark
   Bracket :: NFData r => IO r -> (r -> IO ()) -> (Env r -> Benchmark) -> Benchmark
   Series :: Show a => Vector a -> (Env a -> Benchmark) -> Benchmark
@@ -43,8 +45,8 @@ sp :: ShowS
 sp = showChar ' '
 
 instance Show Benchmark where
-  showsPrec _ (Bench name _) =
-      showString "Bench" . sp . shows name . sp . showString "_"
+  showsPrec _ (Bench show' _ _ _ x) =
+      showString "Bench" . sp . shows (show' x) . sp . showString "_"
   showsPrec x (Group name bks) =
       showString "Group" . sp . shows name . sp . showsPrec x bks
   showsPrec x (Bracket _ _ f) =
@@ -55,7 +57,15 @@ instance Show Benchmark where
   showsPrec x (WithSampling _opt bk) = showsPrec x bk
 
 bench :: String -> Batch () -> Benchmark
-bench name batch = Bench (Text.pack name) batch
+bench name batch = Bench Text.pack (const []) id (const batch) name
+
+benchWith
+  :: (a -> Text)
+  -> (a -> [JSON.Pair])
+  -> (a -> b)
+  -> (b -> Batch ())
+  -> a -> Benchmark
+benchWith = Bench
 
 bgroup :: String -> [Benchmark] -> Benchmark
 bgroup name bks = Group (Text.pack name) bks

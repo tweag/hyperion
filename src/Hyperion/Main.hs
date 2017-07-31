@@ -138,7 +138,7 @@ instance Show DuplicateNames where
 doList :: [Benchmark] -> IO ()
 doList bks = mapM_ Text.putStrLn $ bks^..folded.namesOf
 
-doRun :: [Benchmark] -> IO (HashMap Text Sample)
+doRun :: [Benchmark] -> IO (HashMap Metadata Sample)
 doRun bks = do
     let nms = bks^..folded.namesOf
     -- Better asymptotics than nub.
