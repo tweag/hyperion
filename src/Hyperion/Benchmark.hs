@@ -8,6 +8,7 @@ module Hyperion.Benchmark
   , bench
   , benchWith
   , benchMany
+  , benchMany2
   , bgroup
   , env
   , series
@@ -77,7 +78,19 @@ benchMany
   -> Benchmark
 benchMany bname xs bnc =
     bgroup bname $ flip fmap xs $
-      benchWith (Text.pack . show) (\x -> [("data",JSON.toJSON x)]) id bnc
+      benchWith (Text.pack . show) (\x -> [("x",JSON.toJSON x)]) id bnc
+
+benchMany2
+  :: (Show a, Show b, JSON.ToJSON a, JSON.ToJSON b)
+  => String
+  -> [(a,b)]
+  -> ((a, b) -> Batch ())
+  -> Benchmark
+benchMany2 bname xs bnc =
+    bgroup bname $ flip fmap xs $
+      benchWith (Text.pack . show) toJs id bnc
+  where
+    toJs (x,y) = [("x", JSON.toJSON x), ("y", JSON.toJSON y)]
 
 bgroup :: String -> [Benchmark] -> Benchmark
 bgroup name bks = Group (Text.pack name) bks

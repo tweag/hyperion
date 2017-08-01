@@ -27,7 +27,7 @@ benchmarks =
           ]
     , withSampling (timebounded (repeat 10) fiveSecs) $ bgroup "roundrip"
         [ bench "ping" (nfIO (system "ping -c1 8.8.8.8 > /dev/null")) ]
-    , benchMany
+    , benchMany2
         "n choose k"
         [(x,y) | x <- [1..4], y <- [1..4], x >= y]
         (nf $ uncurry choose)
