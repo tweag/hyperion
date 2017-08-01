@@ -1,11 +1,13 @@
 {-# LANGUAGE GADTSyntax #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Hyperion.Benchmark
   ( -- * Benchmarks
     Benchmark(..)
   , bench
   , benchWith
+  , benchMany
   , bgroup
   , env
   , series
@@ -66,6 +68,16 @@ benchWith
   -> (b -> Batch ())
   -> a -> Benchmark
 benchWith = Bench
+
+benchMany
+  :: (Show a, JSON.ToJSON a)
+  => String
+  -> [a]
+  -> (a -> Batch ())
+  -> Benchmark
+benchMany bname xs bnc =
+    bgroup bname $ flip fmap xs $
+      benchWith (Text.pack . show) (\x -> [("data",JSON.toJSON x)]) id bnc
 
 bgroup :: String -> [Benchmark] -> Benchmark
 bgroup name bks = Group (Text.pack name) bks

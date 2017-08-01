@@ -27,13 +27,13 @@ import Hyperion.Report
 
 data Component = BenchC Metadata | GroupC Metadata | SeriesC Metadata
 
-qualName :: [Component] -> Metadata
-qualName = go ""
+qualMeta :: [Component] -> Metadata
+qualMeta = go ""
   where
     go index [BenchC txt] = txt <> index
     go index (GroupC txt : comps) = txt <> index <> "/" <> go "" comps
     go index (SeriesC txt : comps) = go (index <> ":" <> txt) comps
-    go _ _ = error "qualName: Impossible"
+    go _ _ = error "qualMeta: Impossible"
 
 namesOf :: Fold Benchmark Text
 namesOf = metadataOf.benchmarkName
@@ -44,7 +44,7 @@ metadataOf = go []
     go :: [Component] -> Fold Benchmark Metadata
     go comps f (Bench show' toJs _ _ x) =
       let md = Metadata (toJs x) (show' x)
-      in coerce $ f (qualName (comps <> [BenchC md]))
+      in coerce $ f (qualMeta (comps <> [BenchC md]))
     go comps f (Group name bks) =
       let md = mempty { _benchmarkName = name }
       in coerce $ (folded.go (comps <> [GroupC md])) f bks
