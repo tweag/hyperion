@@ -46,7 +46,7 @@ sp = showChar ' '
 
 instance Show Benchmark where
   showsPrec _ (Bench show' _ _ _ x) =
-      showString "Bench" . sp . shows (show' x) . sp . showString "_"
+      showString "Bench" . sp . showString (Text.unpack $ show' x) . sp . showString "_"
   showsPrec x (Group name bks) =
       showString "Group" . sp . shows name . sp . showsPrec x bks
   showsPrec x (Bracket _ _ f) =

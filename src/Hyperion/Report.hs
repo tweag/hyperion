@@ -17,6 +17,7 @@ import qualified Data.HashMap.Strict as HashMap
 import Data.Int
 import Data.List (stripPrefix)
 import Data.Maybe (fromJust)
+import Data.Text (Text)
 import Data.Time (UTCTime)
 import Hyperion.Measurement (Sample, Metadata)
 
