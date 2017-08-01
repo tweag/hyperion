@@ -1,20 +1,19 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Hyperion.Report where
 
 import Control.Lens.TH (makeLenses)
-import Control.Lens (_head, (%~))
 import GHC.Generics (Generic)
 import qualified Data.Aeson as JSON
 import Data.Aeson ((.=))
 import Data.Aeson.TH
-import Data.Char (toLower)
+import Data.Aeson.Types (camelTo2)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Int
-import Data.List (stripPrefix)
 import Data.Maybe (fromJust)
 import Data.Text (Text)
 import Data.Time (UTCTime)
@@ -29,7 +28,7 @@ data Report = Report
   , _reportMeasurements :: !(Maybe Sample)
   } deriving (Generic)
 makeLenses ''Report
-deriveJSON defaultOptions{ fieldLabelModifier = (_head %~ toLower) . fromJust . stripPrefix "_report" } ''Report
+deriveJSON defaultOptions{ fieldLabelModifier = camelTo2 '_' . drop (length @[] "_report") } ''Report
 
 json :: UTCTime -> Maybe Text -> HashMap Text Report -> JSON.Value
 json timestamp hostId report =
