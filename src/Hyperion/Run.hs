@@ -21,6 +21,8 @@ module Hyperion.Run
   , geometricSeries
   ) where
 
+import Control.DeepSeq
+import Control.Exception (evaluate)
 import Control.Lens (foldMapOf)
 import Control.Monad (replicateM)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, bracket)
@@ -71,7 +73,7 @@ runBenchmarkWithConfig samplingConf bk0 =
     go cfg (Bench _ batch) = HashMap.singleton <$> pop <*> lift (cfg batch)
     go cfg (Group _ bks) = foldMap (go cfg) bks
     go cfg (Bracket ini fini g) =
-      bracket (lift ini) (lift . fini) (go cfg . g . Resource)
+      bracket (lift (ini >>= evaluate . force)) (lift . fini) (go cfg . g . Resource)
     go cfg (Series xs g) = foldMap (go cfg . g . Resource) xs
     go _cfg (WithSampling cfg bk) = go cfg bk
 
