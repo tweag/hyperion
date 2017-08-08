@@ -44,7 +44,7 @@ instance Arbitrary Benchmark where
     ]
 
 hasSeries :: Benchmark -> Bool
-hasSeries b = Text.any (==':') (foldOf namesOf b)
+hasSeries b = Text.any (==':') (foldOf names b)
 
 spec :: Spec
 spec = do
@@ -53,4 +53,4 @@ spec = do
         not (hasSeries b) ==>
         monadicIO $ do
           results <- run $ runBenchmarkWithConfig (fixed 1) b
-          assert (length results == length (nub (b^..namesOf)))
+          assert (length results == length (nub (b^..names)))

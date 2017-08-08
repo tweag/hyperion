@@ -2,7 +2,7 @@
 {-# LANGUAGE RankNTypes #-}
 
 module Hyperion.Analysis
-  ( namesOf
+  ( names
   , analyze
   ) where
 
@@ -34,8 +34,8 @@ qualName = go ""
     go index (SeriesC txt : comps) = go (index <> ":" <> txt) comps
     go _ _ = error "qualName: Impossible"
 
-namesOf :: Fold Benchmark Text
-namesOf = go []
+names :: Fold Benchmark Text
+names = go []
   where
     go :: [Component] -> Fold Benchmark Text
     go comps f (Bench name _) = coerce $ f (qualName (comps <> [BenchC name]))

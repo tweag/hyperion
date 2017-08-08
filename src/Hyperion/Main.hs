@@ -136,11 +136,11 @@ instance Show DuplicateNames where
   show (DuplicateNames nms) = "Duplicate names: " <> show nms
 
 doList :: [Benchmark] -> IO ()
-doList bks = mapM_ Text.putStrLn $ bks^..folded.namesOf
+doList bks = mapM_ Text.putStrLn $ bks^..folded.names
 
 doRun :: [Benchmark] -> IO (HashMap Text Sample)
 doRun bks = do
-    let nms = bks^..folded.namesOf
+    let nms = bks^..folded.names
     -- Better asymptotics than nub.
     unless (length (group (sort nms)) == length nms) $
       throwIO $ DuplicateNames [ n | n:_:_ <- group (sort nms) ]

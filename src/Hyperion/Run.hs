@@ -36,7 +36,7 @@ import qualified Data.HashMap.Strict as HashMap
 import Data.Sequence (ViewL((:<)), viewl)
 import Data.Text (Text)
 import qualified Data.Vector.Unboxed as Unboxed
-import Hyperion.Analysis (namesOf)
+import Hyperion.Analysis (names)
 import Hyperion.Benchmark
 import Hyperion.Internal
 import Hyperion.Measurement
@@ -68,7 +68,7 @@ runBenchmarkWithConfig
 runBenchmarkWithConfig samplingConf bk0 =
   -- Ignore the names we find. Use fully qualified names accumulated from the
   -- lens defined above. The order is DFS in both cases.
-  evalStateT (unStateT' (go samplingConf bk0)) (foldMapOf namesOf return bk0)
+  evalStateT (unStateT' (go samplingConf bk0)) (foldMapOf names return bk0)
   where
     go cfg (Bench _ batch) = HashMap.singleton <$> pop <*> lift (cfg batch)
     go cfg (Group _ bks) = foldMap (go cfg) bks

@@ -13,10 +13,10 @@ spec :: Spec
 spec = do
     describe "defaultMain" $ do
       it "checks for duplicate names" $ property $ \b ->
-        length (b^..namesOf) /= length (group (sort (b^..namesOf))) ==>
+        length (b^..names) /= length (group (sort (b^..names))) ==>
         expectFailure $ monadicIO $ run $
           defaultMainWith defaultConfig{configMonoidMode = return Run} "spec" [b]
       it "Analyzes uniquely named benchmarks" $ property $ \b ->
-        length (b^..namesOf) == length (group (sort (b^..namesOf))) ==>
+        length (b^..names) == length (group (sort (b^..names))) ==>
         monadicIO $ run $
           defaultMainWith defaultConfig{configMonoidOutputPath = return nullOutputPath} "specs" [b]
