@@ -34,9 +34,8 @@ import Data.List (mapAccumR)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Sequence (ViewL((:<)), viewl)
-import Data.Text (Text)
 import qualified Data.Vector.Unboxed as Unboxed
-import Hyperion.Analysis (namesOf)
+import Hyperion.Analysis (metadataOf)
 import Hyperion.Benchmark
 import Hyperion.Internal
 import Hyperion.Measurement
@@ -56,7 +55,7 @@ instance (Monad m, Monoid a) => Monoid (StateT' s m a) where
 -- | Default way of running benchmarks.
 -- Default is 100 samples, for each batch size from 1 to 20 with a geometric
 -- progression of 1.2.
-runBenchmark :: Benchmark -> IO (HashMap Text Sample)
+runBenchmark :: Benchmark -> IO (HashMap Metadata Sample)
 runBenchmark = runBenchmarkWithConfig (geometricBatches 100 20 1.2)
 
 -- | Runs the benchmarks with the provided config.
@@ -64,13 +63,13 @@ runBenchmark = runBenchmarkWithConfig (geometricBatches 100 20 1.2)
 runBenchmarkWithConfig
   :: (Batch () -> IO Sample) -- ^ Batch and sampling strategy.
   -> Benchmark -- ^ Benchmark to be run.
-  -> IO (HashMap Text Sample)
+  -> IO (HashMap Metadata Sample)
 runBenchmarkWithConfig samplingConf bk0 =
   -- Ignore the names we find. Use fully qualified names accumulated from the
   -- lens defined above. The order is DFS in both cases.
-  evalStateT (unStateT' (go samplingConf bk0)) (foldMapOf namesOf return bk0)
+  evalStateT (unStateT' (go samplingConf bk0)) (foldMapOf metadataOf return bk0)
   where
-    go cfg (Bench _ batch) = HashMap.singleton <$> pop <*> lift (cfg batch)
+    go cfg (Bench _ _ f toBatch x) = HashMap.singleton <$> pop <*> lift (cfg $ toBatch $ f x)
     go cfg (Group _ bks) = foldMap (go cfg) bks
     go cfg (Bracket ini fini g) =
       bracket (lift (ini >>= evaluate . force)) (lift . fini) (go cfg . g . Resource)
@@ -169,7 +168,7 @@ splitn n gen = snd $ mapAccumR (flip (const split)) gen [1..n]
 reorder :: RandomGen g => g -> (g -> [Benchmark] -> [Benchmark]) -> Benchmark -> Benchmark
 reorder gen0 shuf = go gen0
   where
-    go _ bk@(Bench _ _) = bk
+    go _ bk@Bench{} = bk
     go _ bk@(WithSampling _ _) = bk
     go gen (Group name bks) = Group name (shuf gen (zipWith go (splitn (length bks) gen) bks))
     go gen (Bracket ini fini f) = Bracket ini fini (\x -> go gen (f x))
