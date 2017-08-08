@@ -14,7 +14,6 @@ import Data.Aeson.Types (camelTo2)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Int
-import Data.Maybe (fromJust)
 import Data.Text (Text)
 import Data.Time (UTCTime)
 import Hyperion.Measurement (Sample)
