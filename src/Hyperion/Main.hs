@@ -13,7 +13,7 @@ module Hyperion.Main
 
 import Control.Applicative
 import Control.Exception (Exception, throwIO)
-import Control.Lens ((&), (.~), (%~), (%@~), (^..), folded, imapped, mapped)
+import Control.Lens ((&), (.~), (%~), (%@~), (^..), folded, imapped, mapped, to)
 import Control.Monad (unless, when)
 import Data.HashMap.Strict (HashMap)
 import Data.List (group, sort)
@@ -130,20 +130,21 @@ nullOutputPath = "/dev/null"
 defaultConfig :: ConfigMonoid
 defaultConfig = mempty
 
-data DuplicateNames = DuplicateNames [Text]
-instance Exception DuplicateNames
-instance Show DuplicateNames where
-  show (DuplicateNames nms) = "Duplicate names: " <> show nms
+data DuplicateIdentifiers = DuplicateIdentifiers [BenchmarkId]
+instance Exception DuplicateIdentifiers
+instance Show DuplicateIdentifiers where
+  show (DuplicateIdentifiers ids) = "Duplicate identifiers: " <> show ids
 
 doList :: [Benchmark] -> IO ()
-doList bks = mapM_ Text.putStrLn $ bks^..folded.names
+doList bks =
+    mapM_ Text.putStrLn $ bks^..folded.identifiers.to renderBenchmarkId
 
-doRun :: [Benchmark] -> IO (HashMap Text Sample)
+doRun :: [Benchmark] -> IO (HashMap BenchmarkId Sample)
 doRun bks = do
-    let nms = bks^..folded.names
+    let ids = bks^..folded.identifiers
     -- Better asymptotics than nub.
-    unless (length (group (sort nms)) == length nms) $
-      throwIO $ DuplicateNames [ n | n:_:_ <- group (sort nms) ]
+    unless (length (group (sort ids)) == length ids) $
+      throwIO $ DuplicateIdentifiers [ n | n:_:_ <- group (sort ids) ]
     foldMap runBenchmark bks
 
 doAnalyze
