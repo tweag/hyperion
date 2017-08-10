@@ -43,7 +43,7 @@ names = go []
     go comps f (Bracket _ _ g) = go comps f (g Empty)
     go comps f (Series xs g) =
       coerce $ for xs $ \x ->
-        go (comps <> [SeriesC (Text.pack (show x))]) f (g Empty)
+        go (comps <> [SeriesC (Text.pack (show x))]) f (g x)
     go comps f (WithSampling _ bk) = go comps f bk
 
     coerce :: (Contravariant f, Applicative f) => f a -> f b

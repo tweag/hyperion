@@ -19,8 +19,8 @@ benchmarks =
     [ bench "id" (nf id ())
     , series [10..10] $ \n ->
         bgroup "pure-functions"
-          [ bench "fact" (use n >>= nf fact)
-          , bench "fib" (use n >>= nf fib)
+          [ bench "fact" (nf fact n)
+          , bench "fib" (nf fib n)
           ]
     , withSampling (timebounded (repeat 10) fiveSecs) $ bgroup "roundrip"
         [ bench "ping" (nfIO (system "ping -c1 8.8.8.8 > /dev/null")) ]
