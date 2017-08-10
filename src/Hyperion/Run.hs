@@ -74,7 +74,7 @@ runBenchmarkWithConfig samplingConf bk0 =
     go cfg (Group _ bks) = foldMap (go cfg) bks
     go cfg (Bracket ini fini g) =
       bracket (lift (ini >>= evaluate . force)) (lift . fini) (go cfg . g . Resource)
-    go cfg (Series xs g) = foldMap (go cfg . g . Resource) xs
+    go cfg (Series xs g) = foldMap (go cfg . g) xs
     go _cfg (WithSampling cfg bk) = go cfg bk
 
     pop = do

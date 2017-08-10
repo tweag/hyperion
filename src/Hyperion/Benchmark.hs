@@ -36,7 +36,7 @@ data Benchmark where
   Bench :: Text -> Batch () -> Benchmark
   Group :: Text -> [Benchmark] -> Benchmark
   Bracket :: NFData r => IO r -> (r -> IO ()) -> (Env r -> Benchmark) -> Benchmark
-  Series :: Show a => Vector a -> (Env a -> Benchmark) -> Benchmark
+  Series :: Show a => Vector a -> (a -> Benchmark) -> Benchmark
   WithSampling :: (Batch () -> IO Sample) -> Benchmark -> Benchmark
 
 sp :: ShowS
@@ -50,7 +50,7 @@ instance Show Benchmark where
   showsPrec x (Bracket _ _ f) =
       showString "Bracket" . sp . showString "(\\_ -> " . showsPrec x (f Empty) . showString ")"
   showsPrec x (Series xs f) =
-      showString "Series" . sp . shows xs . sp . showString "(\\_ -> " . showsPrec x (f Empty) . showString ")"
+      showString "Series" . sp . shows xs . sp . showsPrec x (f <$> xs)
   -- we don't show the sampling
   showsPrec x (WithSampling _opt bk) = showsPrec x bk
 
@@ -60,7 +60,7 @@ bench name batch = Bench (Text.pack name) batch
 bgroup :: String -> [Benchmark] -> Benchmark
 bgroup name bks = Group (Text.pack name) bks
 
-series :: Show a => Vector a -> (Env a -> Benchmark) -> Benchmark
+series :: Show a => Vector a -> (a -> Benchmark) -> Benchmark
 series = Series
 
 -- | Set the sampling strategy for the given 'Benchmark'. The sampling strategy
