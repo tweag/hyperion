@@ -22,6 +22,7 @@ import Data.Monoid
 import Data.Text (pack, Text, unpack)
 import qualified Data.Text.IO as Text
 import Data.Time (getCurrentTime)
+import Data.Typeable (Typeable)
 import Data.Version (showVersion)
 import Hyperion.Analysis
 import Hyperion.Benchmark
@@ -130,9 +131,9 @@ nullOutputPath = "/dev/null"
 defaultConfig :: ConfigMonoid
 defaultConfig = mempty
 
-data DuplicateIdentifiers = DuplicateIdentifiers [BenchmarkId]
-instance Exception DuplicateIdentifiers
-instance Show DuplicateIdentifiers where
+data DuplicateIdentifiers a = DuplicateIdentifiers [a]
+instance (Show a, Typeable a) => Exception (DuplicateIdentifiers a)
+instance Show a => Show (DuplicateIdentifiers a) where
   show (DuplicateIdentifiers ids) = "Duplicate identifiers: " <> show ids
 
 doList :: [Benchmark] -> IO ()
