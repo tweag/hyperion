@@ -12,11 +12,11 @@ import Test.QuickCheck.Monadic (monadicIO, run)
 spec :: Spec
 spec = do
     describe "defaultMain" $ do
-      it "checks for duplicate names" $ property $ \b ->
-        length (b^..names) /= length (group (sort (b^..names))) ==>
+      it "checks for duplicate identifiers" $ property $ \b ->
+        length (b^..identifiers) /= length (group (sort (b^..identifiers))) ==>
         expectFailure $ monadicIO $ run $
           defaultMainWith defaultConfig{configMonoidMode = return Run} "spec" [b]
-      it "Analyzes uniquely named benchmarks" $ property $ \b ->
-        length (b^..names) == length (group (sort (b^..names))) ==>
+      it "Analyzes uniquely identified benchmarks" $ property $ \b ->
+        length (b^..identifiers) == length (group (sort (b^..identifiers))) ==>
         monadicIO $ run $
           defaultMainWith defaultConfig{configMonoidOutputPath = return nullOutputPath} "specs" [b]
