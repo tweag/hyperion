@@ -9,6 +9,7 @@ import Numeric
 import Control.Lens (view)
 import Data.Text (unpack)
 import Data.HashMap.Strict (HashMap)
+import Hyperion.Internal
 import Hyperion.Report
 import Text.PrettyPrint.ANSI.Leijen
 

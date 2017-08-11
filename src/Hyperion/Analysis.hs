@@ -2,8 +2,7 @@
 {-# LANGUAGE RankNTypes #-}
 
 module Hyperion.Analysis
-  ( BenchmarkId
-  , Parameter(..)
+  ( Parameter(..)
   , identifiers
   , analyze
   ) where
@@ -18,7 +17,6 @@ import Control.Lens
   )
 
 import Control.Lens.Each
-import Data.Text (Text)
 import Data.Monoid
 import Data.Traversable (for)
 import Hyperion.Benchmark

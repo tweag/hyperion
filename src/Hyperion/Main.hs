@@ -26,6 +26,7 @@ import Data.Typeable (Typeable)
 import Data.Version (showVersion)
 import Hyperion.Analysis
 import Hyperion.Benchmark
+import Hyperion.Internal
 import Hyperion.Measurement
 import Hyperion.PrintReport
 import Hyperion.Report

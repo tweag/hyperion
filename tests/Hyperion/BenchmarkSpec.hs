@@ -7,10 +7,8 @@ module Hyperion.BenchmarkSpec where
 
 import Control.Lens ((^..), foldOf, to)
 import Data.List (nub)
-import qualified Data.Text as Text
 import Hyperion.Analysis
 import Hyperion.Benchmark
-import Hyperion.Report (renderBenchmarkId)
 import Hyperion.Run
 import Test.Hspec
 import Test.QuickCheck
@@ -45,7 +43,7 @@ instance Arbitrary Benchmark where
     ]
 
 hasSeries :: Benchmark -> Bool
-hasSeries b = Text.any (==':') (foldOf (identifiers.to renderBenchmarkId) b)
+hasSeries b = any (==':') (foldOf (identifiers.to show) b)
 
 spec :: Spec
 spec = do
