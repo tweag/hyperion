@@ -8,12 +8,14 @@
 module Hyperion.Run
   ( -- * Run benchmarks
     runBenchmark
-  , runBenchmarkWithConfig
     -- * Benchmark transformations
   , shuffle
   , reorder
+    -- * Sampling strategy selectors
+  , uniform
     -- * Sampling strategies
   , SamplingStrategy(..)
+  , defaultStrategy
   , fixed
   , sample
   , geometric
@@ -52,30 +54,29 @@ instance (Monad m, Monoid a) => Monoid (StateT' s m a) where
   mempty = lift (return mempty)
   mappend m1 m2 = mappend <$> m1 <*> m2
 
--- | Default way of running benchmarks.
--- Default is 100 samples, for each batch size from 1 to 20 with a geometric
--- progression of 1.2.
-runBenchmark :: Benchmark -> IO (HashMap BenchmarkId Sample)
-runBenchmark = runBenchmarkWithConfig (geometricBatches 100 20 1.2)
-
 newtype SamplingStrategy = SamplingStrategy (Batch () -> IO Sample)
   deriving (Monoid)
 
 -- | Runs the benchmarks with the provided config.
 -- Only to be used if the default running configuration does not suit you.
 runBenchmark
-  :: SamplingStrategy
+  :: (BenchmarkId -> Maybe SamplingStrategy)
   -- ^ Name indexed batch sampling strategy.
   -> Benchmark
   -- ^ Benchmark to be run.
   -> IO (HashMap BenchmarkId Sample)
-runBenchmarkWithConfig samplingConf bk0 =
+runBenchmark istrategy bk0 =
   -- Ignore the identifiers we find. Use fully qualified identifiers
   -- accumulated from the lens defined above. The order is DFS in both cases.
   evalStateT (unStateT' (go bk0)) (foldMapOf identifiers return bk0)
   where
-    go (Bench _ batch) = HashMap.singleton <$> pop <*> lift (cfg batch)
-    go (Group _ bks) = foldMap go bks
+    go (Bench _ batch) = do
+      ident <- pop
+      case (istrategy ident) of
+        Nothing -> return HashMap.empty
+        Just (SamplingStrategy f) ->
+          HashMap.singleton ident <$> lift (f batch)
+    go (Group _ bks) = foldMap (go) bks
     go (Bracket ini fini g) =
       bracket (lift (ini >>= evaluate . force)) (lift . fini) (go . g . Resource)
     go (Series xs g) = foldMap (go . g) xs
@@ -125,6 +126,16 @@ timebounded batchSizes maxTime batch = do
         then return smpl'
         else go start bss smpl'
     go _ _ s = return s
+
+-- | Sampling strategies that ignore the name index, i.e. are uniform across all
+-- benchmarks.
+uniform :: SamplingStrategy -> (BenchmarkId -> Maybe SamplingStrategy)
+uniform = const . Just
+
+-- | Default to 100 samples, for each batch size from 1 to 20 with a geometric
+-- progression of 1.2.
+defaultStrategy :: SamplingStrategy
+defaultStrategy = geometric 100 20 1.2
 
 -- | Batching strategy, following a geometric progression from 1
 -- to the provided limit, with the given ratio.
