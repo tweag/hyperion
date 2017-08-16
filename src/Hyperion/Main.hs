@@ -49,11 +49,13 @@ data ConfigMonoid = ConfigMonoid
   , configMonoidMode :: First Mode
   , configMonoidPretty :: First Bool
   , configMonoidRaw :: First Bool
+  , configMonoidSamplingStrategy :: First SamplingStrategy
   }
 
 instance Monoid ConfigMonoid where
   mempty =
     ConfigMonoid
+      mempty
       mempty
       mempty
       mempty
@@ -64,12 +66,14 @@ instance Monoid ConfigMonoid where
       (mappend (configMonoidMode c1) (configMonoidMode c2))
       (mappend (configMonoidPretty c1) (configMonoidPretty c2))
       (mappend (configMonoidRaw c1) (configMonoidRaw c2))
+      (mappend (configMonoidSamplingStrategy c1) (configMonoidSamplingStrategy c2))
 
 data Config = Config
   { configOutputPath :: Maybe FilePath
   , configMode :: Mode
   , configPretty :: Bool
   , configRaw :: Bool
+  , configSamplingStrategy :: SamplingStrategy
   }
 
 fromFirst :: a -> First a -> a
@@ -81,6 +85,7 @@ configFromMonoid ConfigMonoid{..} = Config
     , configMode = fromFirst Analyze configMonoidMode
     , configPretty = fromFirst False configMonoidPretty
     , configRaw = fromFirst False configMonoidRaw
+    , configSamplingStrategy = fromFirst defaultStrategy configMonoidSamplingStrategy
     }
 
 options :: Options.Parser ConfigMonoid
@@ -118,7 +123,10 @@ options = do
          (Options.switch
             (Options.long "raw" <>
              Options.help "Include raw measurement data in report."))
+     -- TODO allow setting this from CLI.
      pure ConfigMonoid{..}
+  where
+    configMonoidSamplingStrategy = First Nothing
 
 -- | The path to the null output file. This is @"nul"@ on Windows and
 -- @"/dev/null"@ elsewhere.
@@ -141,13 +149,13 @@ doList :: [Benchmark] -> IO ()
 doList bks =
     mapM_ Text.putStrLn $ bks^..folded.identifiers.to renderBenchmarkId
 
-doRun :: [Benchmark] -> IO (HashMap BenchmarkId Sample)
-doRun bks = do
+doRun :: SamplingStrategy -> [Benchmark] -> IO (HashMap BenchmarkId Sample)
+doRun strategy bks = do
     let ids = bks^..folded.identifiers
     -- Better asymptotics than nub.
     unless (length (group (sort ids)) == length ids) $
       throwIO $ DuplicateIdentifiers [ n | n:_:_ <- group (sort ids) ]
-    foldMap runBenchmark bks
+    foldMap (runBenchmark (uniform strategy)) bks
 
 doAnalyze
   :: Config -- ^ Hyperion config.
@@ -168,7 +176,7 @@ doAnalyze Config{..} packageName bks = do
           IO.openFile (path </> filename) IO.WriteMode
         else
           IO.openFile path IO.WriteMode
-    results <- doRun bks
+    results <- doRun configSamplingStrategy bks
     let strip
           | configRaw = id
           | otherwise = reportMeasurements .~ Nothing
@@ -194,7 +202,7 @@ defaultMainWith presetConfig packageName bks = do
       Config{..} -> case configMode of
         Version -> putStrLn $ "Hyperion " <> showVersion version
         List -> doList bks
-        Run -> do _ <- doRun bks; return ()
+        Run -> do _ <- doRun configSamplingStrategy bks; return ()
         Analyze -> doAnalyze config (pack packageName) bks
 
 defaultMain

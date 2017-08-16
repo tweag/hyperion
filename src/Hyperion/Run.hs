@@ -8,23 +8,25 @@
 module Hyperion.Run
   ( -- * Run benchmarks
     runBenchmark
-  , runBenchmarkWithConfig
     -- * Benchmark transformations
   , shuffle
   , reorder
-    -- * strategies
+    -- * Sampling strategy selectors
+  , uniform
+    -- * Sampling strategies
+  , SamplingStrategy(..)
+  , defaultStrategy
   , fixed
   , sample
-  , geometricBatches
+  , geometric
   , timebounded
-    -- * strategy helpers
+    -- * Strategy helpers
   , geometricSeries
   ) where
 
 import Control.DeepSeq
 import Control.Exception (evaluate)
 import Control.Lens (foldMapOf)
-import Control.Monad (replicateM)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, bracket)
 import Control.Monad.State.Class (MonadState)
 import Control.Monad.State.Strict (StateT, evalStateT, get, put)
@@ -52,29 +54,32 @@ instance (Monad m, Monoid a) => Monoid (StateT' s m a) where
   mempty = lift (return mempty)
   mappend m1 m2 = mappend <$> m1 <*> m2
 
--- | Default way of running benchmarks.
--- Default is 100 samples, for each batch size from 1 to 20 with a geometric
--- progression of 1.2.
-runBenchmark :: Benchmark -> IO (HashMap BenchmarkId Sample)
-runBenchmark = runBenchmarkWithConfig (geometricBatches 100 20 1.2)
+newtype SamplingStrategy = SamplingStrategy (Batch () -> IO Sample)
+  deriving (Monoid)
 
 -- | Runs the benchmarks with the provided config.
 -- Only to be used if the default running configuration does not suit you.
-runBenchmarkWithConfig
-  :: (Batch () -> IO Sample) -- ^ Batch and sampling strategy.
-  -> Benchmark -- ^ Benchmark to be run.
+runBenchmark
+  :: (BenchmarkId -> Maybe SamplingStrategy)
+  -- ^ Name indexed batch sampling strategy.
+  -> Benchmark
+  -- ^ Benchmark to be run.
   -> IO (HashMap BenchmarkId Sample)
-runBenchmarkWithConfig samplingConf bk0 =
+runBenchmark istrategy bk0 =
   -- Ignore the identifiers we find. Use fully qualified identifiers
   -- accumulated from the lens defined above. The order is DFS in both cases.
-  evalStateT (unStateT' (go samplingConf bk0)) (foldMapOf identifiers return bk0)
+  evalStateT (unStateT' (go bk0)) (foldMapOf identifiers return bk0)
   where
-    go cfg (Bench _ batch) = HashMap.singleton <$> pop <*> lift (cfg batch)
-    go cfg (Group _ bks) = foldMap (go cfg) bks
-    go cfg (Bracket ini fini g) =
-      bracket (lift (ini >>= evaluate . force)) (lift . fini) (go cfg . g . Resource)
-    go cfg (Series xs g) = foldMap (go cfg . g) xs
-    go _cfg (WithSampling cfg bk) = go cfg bk
+    go (Bench _ batch) = do
+      ident <- pop
+      case (istrategy ident) of
+        Nothing -> return HashMap.empty
+        Just (SamplingStrategy f) ->
+          HashMap.singleton ident <$> lift (f batch)
+    go (Group _ bks) = foldMap (go) bks
+    go (Bracket ini fini g) =
+      bracket (lift (ini >>= evaluate . force)) (lift . fini) (go . g . Resource)
+    go (Series xs g) = foldMap (go . g) xs
 
     pop = do
       x :< xs <- viewl <$> get
@@ -90,14 +95,14 @@ chrono act = do
     return $ fromIntegral $ Clock.toNanoSecs $ Clock.diffTimeSpec start end
 
 -- | Sample once a batch of fixed size.
-fixed :: Int64 -> Batch () -> IO Sample
-fixed _batchSize batch = do
+fixed :: Int64 -> SamplingStrategy
+fixed _batchSize = SamplingStrategy $ \batch -> do
     _duration <- chrono $ runBatch batch _batchSize
     return $ Sample $ Unboxed.singleton Measurement{..}
 
 -- | Run a sampling strategy @n@ times.
-sample :: Int64 -> (Batch () -> IO Sample) -> Batch () -> IO Sample
-sample n f batch = mconcat <$> replicateM (fromIntegral n) (f batch)
+sample :: Int64 -> SamplingStrategy -> SamplingStrategy
+sample n strategy = mconcat $ replicate (fromIntegral n) strategy
 
 -- | Sampling strategy that creates samples of the specified sizes with a time
 -- bound. Sampling stops when either a sample has been sampled for each size or
@@ -122,25 +127,30 @@ timebounded batchSizes maxTime batch = do
         else go start bss smpl'
     go _ _ s = return s
 
+-- | Sampling strategies that ignore the name index, i.e. are uniform across all
+-- benchmarks.
+uniform :: SamplingStrategy -> (BenchmarkId -> Maybe SamplingStrategy)
+uniform = const . Just
+
+-- | Default to 100 samples, for each batch size from 1 to 20 with a geometric
+-- progression of 1.2.
+defaultStrategy :: SamplingStrategy
+defaultStrategy = geometric 100 20 1.2
+
 -- | Batching strategy, following a geometric progression from 1
 -- to the provided limit, with the given ratio.
-geometricBatches
-    :: Int64 -- ^ Sample size.
-    -> Int64 -- ^ Max batch size.
-    -> Double -- ^ Ratio of geometric progression.
-    -> Batch ()
-    -> IO Sample
-geometricBatches nSamples limit ratio batch =
-    mconcat <$>
-      (traverse
-        (\size -> sample nSamples (fixed size) batch)
-        (geometricSeries ratio limit)
-      )
+geometric
+  :: Int64 -- ^ Sample size.
+  -> Int64 -- ^ Max batch size.
+  -> Double -- ^ Ratio of geometric progression.
+  -> SamplingStrategy
+geometric nSamples limit ratio =
+    foldMap (\size -> sample nSamples (fixed size)) (geometricSeries ratio limit)
 
 geometricSeries
-    :: Double -- ^ Geometric progress.
-    -> Int64 -- ^ End of the series.
-    -> [Int64]
+  :: Double -- ^ Geometric progress.
+  -> Int64 -- ^ End of the series.
+  -> [Int64]
 geometricSeries ratio limit =
     if ratio > 1
     then
@@ -169,7 +179,6 @@ reorder :: RandomGen g => g -> (g -> [Benchmark] -> [Benchmark]) -> Benchmark ->
 reorder gen0 shuf = go gen0
   where
     go _ bk@(Bench _ _) = bk
-    go _ bk@(WithSampling _ _) = bk
     go gen (Group name bks) = Group name (shuf gen (zipWith go (splitn (length bks) gen) bks))
     go gen (Bracket ini fini f) = Bracket ini fini (\x -> go gen (f x))
     go gen (Series xs f) = Series xs (\x -> go gen (f x))

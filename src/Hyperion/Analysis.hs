@@ -34,7 +34,6 @@ identifiers = go []
     go comps f (Series xs g) =
       coerce $ for xs $ \x ->
         go (comps <> [SeriesC (Parameter x)]) f (g x)
-    go comps f (WithSampling _ bk) = go comps f bk
 
     coerce :: (Contravariant f, Applicative f) => f a -> f b
     coerce = contramap (const ()) . fmap (const ())

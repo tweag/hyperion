@@ -53,9 +53,19 @@ library
   default-language: Haskell2010
   ghc-options:         -Wall
 
-executable hyperion-example
+executable hyperion-micro-benchmark-example
   hs-source-dirs:      examples
-  main-is:             Main.hs
+  main-is:             micro-benchmarks.hs
+  build-depends:
+    base,
+    hyperion,
+    process
+  default-language:    Haskell2010
+  ghc-options:         -Wall
+
+executable hyperion-end-to-end-benchmark-example
+  hs-source-dirs:      examples
+  main-is:             end-to-end-benchmarks.hs
   build-depends:
     base,
     hyperion,
