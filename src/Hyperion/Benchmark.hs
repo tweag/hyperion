@@ -8,7 +8,6 @@ module Hyperion.Benchmark
   , bgroup
   , env
   , series
-  , withSampling
   -- * Batches
   , Batch
   , runBatch
@@ -30,14 +29,12 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import Control.DeepSeq
 import Hyperion.Internal
-import Hyperion.Measurement
 
 data Benchmark where
   Bench :: Text -> Batch () -> Benchmark
   Group :: Text -> [Benchmark] -> Benchmark
   Bracket :: NFData r => IO r -> (r -> IO ()) -> (Env r -> Benchmark) -> Benchmark
   Series :: (Show a, Enum a) => Vector a -> (a -> Benchmark) -> Benchmark
-  WithSampling :: (Batch () -> IO Sample) -> Benchmark -> Benchmark
 
 sp :: ShowS
 sp = showChar ' '
@@ -51,8 +48,6 @@ instance Show Benchmark where
       showString "Bracket" . sp . showString "(\\_ -> " . showsPrec x (f Empty) . showString ")"
   showsPrec x (Series xs f) =
       showString "Series" . sp . shows xs . sp . showsPrec x (f <$> xs)
-  -- we don't show the sampling
-  showsPrec x (WithSampling _opt bk) = showsPrec x bk
 
 bench :: String -> Batch () -> Benchmark
 bench name batch = Bench (Text.pack name) batch
@@ -62,14 +57,6 @@ bgroup name bks = Group (Text.pack name) bks
 
 series :: (Show a, Enum a) => Vector a -> (a -> Benchmark) -> Benchmark
 series = Series
-
--- | Set the sampling strategy for the given 'Benchmark'. The sampling strategy
--- specifies how to (create a) 'Sample' for a given 'Batch'.
-withSampling
-  :: (Batch () -> IO Sample) -- ^ sampling strategy
-  -> Benchmark -- ^ 'Benchmark' sampled
-  -> Benchmark
-withSampling = WithSampling
 
 env
   :: NFData r

@@ -67,14 +67,13 @@ runBenchmarkWithConfig
 runBenchmarkWithConfig samplingConf bk0 =
   -- Ignore the identifiers we find. Use fully qualified identifiers
   -- accumulated from the lens defined above. The order is DFS in both cases.
-  evalStateT (unStateT' (go samplingConf bk0)) (foldMapOf identifiers return bk0)
+  evalStateT (unStateT' (go bk0)) (foldMapOf identifiers return bk0)
   where
-    go cfg (Bench _ batch) = HashMap.singleton <$> pop <*> lift (cfg batch)
-    go cfg (Group _ bks) = foldMap (go cfg) bks
-    go cfg (Bracket ini fini g) =
-      bracket (lift (ini >>= evaluate . force)) (lift . fini) (go cfg . g . Resource)
-    go cfg (Series xs g) = foldMap (go cfg . g) xs
-    go _cfg (WithSampling cfg bk) = go cfg bk
+    go (Bench _ batch) = HashMap.singleton <$> pop <*> lift (cfg batch)
+    go (Group _ bks) = foldMap go bks
+    go (Bracket ini fini g) =
+      bracket (lift (ini >>= evaluate . force)) (lift . fini) (go . g . Resource)
+    go (Series xs g) = foldMap (go . g) xs
 
     pop = do
       x :< xs <- viewl <$> get
@@ -169,7 +168,6 @@ reorder :: RandomGen g => g -> (g -> [Benchmark] -> [Benchmark]) -> Benchmark ->
 reorder gen0 shuf = go gen0
   where
     go _ bk@(Bench _ _) = bk
-    go _ bk@(WithSampling _ _) = bk
     go gen (Group name bks) = Group name (shuf gen (zipWith go (splitn (length bks) gen) bks))
     go gen (Bracket ini fini f) = Bracket ini fini (\x -> go gen (f x))
     go gen (Series xs f) = Series xs (\x -> go gen (f x))
