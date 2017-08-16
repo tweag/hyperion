@@ -1,14 +1,12 @@
 #!/usr/bin/env stack
--- stack --no-nix-pure runghc
+-- stack --no-nix-pure runghc --package hyperion
 
 {-# LANGUAGE OverloadedLists #-}
 
 module Main where
 
 import Hyperion.Benchmark
-import Hyperion.Run
 import Hyperion.Main
-import System.Process (system)
 
 fact, fib :: Int -> Int
 fact n = if n == 0 then 1 else n * fact (n - 1)
@@ -26,14 +24,10 @@ benchmarks =
           [ bench "fact" (nf fact n)
           , bench "fib" (nf fib n)
           ]
-    , withSampling (timebounded (repeat 10) fiveSecs) $ bgroup "roundrip"
-        [ bench "ping" (nfIO (system "ping -c1 8.8.8.8 > /dev/null")) ]
     , series [1..4] $ \n ->
         series [1..n] $ \k ->
           bench "n choose k" $ nf (uncurry choose) (n, k)
     ]
-  where
-    fiveSecs = 5 * 1000 * 1000 * 1000 -- in nanoseconds
 
 main :: IO ()
-main = defaultMain "hyperion-example-package" benchmarks
+main = defaultMain "hyperion-example-micro-benchmarks" benchmarks
