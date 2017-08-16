@@ -12,7 +12,8 @@ module Hyperion.Run
     -- * Benchmark transformations
   , shuffle
   , reorder
-    -- * strategies
+    -- * Sampling strategies
+  , SamplingStrategy(..)
   , fixed
   , sample
   , geometricBatches
@@ -24,7 +25,6 @@ module Hyperion.Run
 import Control.DeepSeq
 import Control.Exception (evaluate)
 import Control.Lens (foldMapOf)
-import Control.Monad (replicateM)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, bracket)
 import Control.Monad.State.Class (MonadState)
 import Control.Monad.State.Strict (StateT, evalStateT, get, put)
@@ -58,11 +58,16 @@ instance (Monad m, Monoid a) => Monoid (StateT' s m a) where
 runBenchmark :: Benchmark -> IO (HashMap BenchmarkId Sample)
 runBenchmark = runBenchmarkWithConfig (geometricBatches 100 20 1.2)
 
+newtype SamplingStrategy = SamplingStrategy (Batch () -> IO Sample)
+  deriving (Monoid)
+
 -- | Runs the benchmarks with the provided config.
 -- Only to be used if the default running configuration does not suit you.
-runBenchmarkWithConfig
-  :: (Batch () -> IO Sample) -- ^ Batch and sampling strategy.
-  -> Benchmark -- ^ Benchmark to be run.
+runBenchmark
+  :: SamplingStrategy
+  -- ^ Name indexed batch sampling strategy.
+  -> Benchmark
+  -- ^ Benchmark to be run.
   -> IO (HashMap BenchmarkId Sample)
 runBenchmarkWithConfig samplingConf bk0 =
   -- Ignore the identifiers we find. Use fully qualified identifiers
@@ -89,14 +94,14 @@ chrono act = do
     return $ fromIntegral $ Clock.toNanoSecs $ Clock.diffTimeSpec start end
 
 -- | Sample once a batch of fixed size.
-fixed :: Int64 -> Batch () -> IO Sample
-fixed _batchSize batch = do
+fixed :: Int64 -> SamplingStrategy
+fixed _batchSize = SamplingStrategy $ \batch -> do
     _duration <- chrono $ runBatch batch _batchSize
     return $ Sample $ Unboxed.singleton Measurement{..}
 
 -- | Run a sampling strategy @n@ times.
-sample :: Int64 -> (Batch () -> IO Sample) -> Batch () -> IO Sample
-sample n f batch = mconcat <$> replicateM (fromIntegral n) (f batch)
+sample :: Int64 -> SamplingStrategy -> SamplingStrategy
+sample n strategy = mconcat $ replicate (fromIntegral n) strategy
 
 -- | Sampling strategy that creates samples of the specified sizes with a time
 -- bound. Sampling stops when either a sample has been sampled for each size or
@@ -124,17 +129,12 @@ timebounded batchSizes maxTime batch = do
 -- | Batching strategy, following a geometric progression from 1
 -- to the provided limit, with the given ratio.
 geometricBatches
-    :: Int64 -- ^ Sample size.
-    -> Int64 -- ^ Max batch size.
-    -> Double -- ^ Ratio of geometric progression.
-    -> Batch ()
-    -> IO Sample
-geometricBatches nSamples limit ratio batch =
-    mconcat <$>
-      (traverse
-        (\size -> sample nSamples (fixed size) batch)
-        (geometricSeries ratio limit)
-      )
+  :: Int64 -- ^ Sample size.
+  -> Int64 -- ^ Max batch size.
+  -> Double -- ^ Ratio of geometric progression.
+  -> SamplingStrategy
+geometricBatches nSamples limit ratio =
+    foldMap (\size -> sample nSamples (fixed size)) (geometricSeries ratio limit)
 
 geometricSeries
     :: Double -- ^ Geometric progress.
