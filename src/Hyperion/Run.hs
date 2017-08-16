@@ -16,9 +16,9 @@ module Hyperion.Run
   , SamplingStrategy(..)
   , fixed
   , sample
-  , geometricBatches
+  , geometric
   , timebounded
-    -- * strategy helpers
+    -- * Strategy helpers
   , geometricSeries
   ) where
 
@@ -128,18 +128,18 @@ timebounded batchSizes maxTime batch = do
 
 -- | Batching strategy, following a geometric progression from 1
 -- to the provided limit, with the given ratio.
-geometricBatches
+geometric
   :: Int64 -- ^ Sample size.
   -> Int64 -- ^ Max batch size.
   -> Double -- ^ Ratio of geometric progression.
   -> SamplingStrategy
-geometricBatches nSamples limit ratio =
+geometric nSamples limit ratio =
     foldMap (\size -> sample nSamples (fixed size)) (geometricSeries ratio limit)
 
 geometricSeries
-    :: Double -- ^ Geometric progress.
-    -> Int64 -- ^ End of the series.
-    -> [Int64]
+  :: Double -- ^ Geometric progress.
+  -> Int64 -- ^ End of the series.
+  -> [Int64]
 geometricSeries ratio limit =
     if ratio > 1
     then
