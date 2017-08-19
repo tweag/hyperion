@@ -19,7 +19,7 @@ module Hyperion.Run
   , fixed
   , sample
   , geometric
-  , timebounded
+  , timeBound
     -- * Strategy helpers
   , geometricSeries
   ) where
@@ -110,22 +110,22 @@ sample n strategy = mconcat $ replicate (fromIntegral n) strategy
 --
 -- The actual amount of time spent may be longer since hyperion will always
 -- wait for a 'Sample' of a given size to complete.
-timebounded
-  :: [Int64] -- ^ Sample sizes; may be infinite
-  -> Clock.TimeSpec -- ^ Time bound
-  -> Batch () -> IO Sample
-timebounded batchSizes maxTime batch = do
+timeBound
+  :: Clock.TimeSpec -- ^ Time bound
+  -> [Int64] -- ^ Sample sizes; may be infinite
+  -> SamplingStrategy
+timeBound maxTime batchSizes = SamplingStrategy $ \batch -> do
     start <- Clock.getTime Clock.Monotonic
-    go start batchSizes mempty
+    go batch start batchSizes mempty
   where
-    go start (_batchSize:bss) smpl = do
+    go batch start (_batchSize:bss) smpl = do
       _duration <- chrono $ runBatch batch _batchSize
       let smpl' = smpl `mappend` (Sample $ Unboxed.singleton Measurement{..})
       now <- Clock.getTime Clock.Monotonic
       if Clock.diffTimeSpec start now > maxTime
         then return smpl'
-        else go start bss smpl'
-    go _ _ s = return s
+        else go batch start bss smpl'
+    go _ _ _ s = return s
 
 -- | Sampling strategies that ignore the name index, i.e. are uniform across all
 -- benchmarks.
