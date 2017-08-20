@@ -176,10 +176,17 @@ shuffle gen xs = SRS.shuffle' xs (length xs) gen
 splitn :: RandomGen g => Int -> g -> [g]
 splitn n gen = snd $ mapAccumR (flip (const split)) gen [1..n]
 
-reorder :: RandomGen g => g -> (g -> [Benchmark] -> [Benchmark]) -> Benchmark -> Benchmark
-reorder gen0 shuf = go gen0
+reorder
+  :: RandomGen g
+  => (g -> [Benchmark] -> [Benchmark])
+  -> (g -> [Benchmark] -> [Benchmark])
+reorder shuf gen0 bks0 =
+    shuf gen0 (zipWith go (splitn (length bks0) gen0) bks0)
   where
     go _ bk@(Bench _ _) = bk
-    go gen (Group name bks) = Group name (shuf gen (zipWith go (splitn (length bks) gen) bks))
-    go gen (Bracket ini fini f) = Bracket ini fini (\x -> go gen (f x))
-    go gen (Series xs f) = Series xs (\x -> go gen (f x))
+    go gen (Group name bks) =
+        Group name (shuf gen (zipWith go (splitn (length bks) gen) bks))
+    go gen (Bracket ini fini f) =
+        Bracket ini fini (\x -> go gen (f x))
+    go gen (Series xs f) =
+        Series xs (\x -> go gen (f x))
