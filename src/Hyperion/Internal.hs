@@ -29,18 +29,21 @@ use (Resource x) = return x
 
 data Parameter = forall a. (Show a, Enum a) => Parameter a
 
+instance Eq Parameter where
+  (==) = (==) `on` \(Parameter x) -> fromEnum x
+
+instance Ord Parameter where
+  compare = compare `on` \(Parameter x) -> fromEnum x
+
 data Component
   = BenchC Text
   | GroupC Text
   | SeriesC Parameter
+  deriving (Eq, Ord)
 
 newtype BenchmarkId = BenchmarkId [Component]
+  deriving (Eq, Ord)
 
-instance Eq BenchmarkId where
-  (==) = (==) `on` renderBenchmarkId
-
-instance Ord BenchmarkId where
-  compare = compare `on` renderBenchmarkId
 
 instance Hashable BenchmarkId where
   hashWithSalt s = hashWithSalt s . renderBenchmarkId
