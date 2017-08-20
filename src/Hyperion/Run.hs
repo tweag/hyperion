@@ -54,11 +54,12 @@ instance (Monad m, Monoid a) => Monoid (StateT' s m a) where
   mempty = lift (return mempty)
   mappend m1 m2 = mappend <$> m1 <*> m2
 
+-- | Sampling strategy.
 newtype SamplingStrategy = SamplingStrategy (Batch () -> IO Sample)
   deriving (Monoid)
 
--- | Runs the benchmarks with the provided config.
--- Only to be used if the default running configuration does not suit you.
+-- | Provided a sampling strategy (which can be keyed on the 'BenchmarkId'),
+-- sample the runtime of all the benchmark cases in the given benchmark tree.
 runBenchmark
   :: (BenchmarkId -> Maybe SamplingStrategy)
   -- ^ Name indexed batch sampling strategy.
