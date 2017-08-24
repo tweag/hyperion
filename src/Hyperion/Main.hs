@@ -52,7 +52,7 @@ data ConfigMonoid = ConfigMonoid
   , configMonoidPretty :: First Bool
   , configMonoidRaw :: First Bool
   , configMonoidSamplingStrategy :: First SamplingStrategy
-  , configMonoidExtraMetadata :: [(Text,Text)]
+  , configMonoidExtraMetadata :: UserMetadata
   }
 
 instance Monoid ConfigMonoid where
@@ -79,7 +79,7 @@ data Config = Config
   , configPretty :: Bool
   , configRaw :: Bool
   , configSamplingStrategy :: SamplingStrategy
-  , configExtraMetadata :: [(Text,Text)]
+  , configExtraMetadata :: UserMetadata
   }
 
 fromFirst :: a -> First a -> a

@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
@@ -20,6 +21,11 @@ import Data.Time (UTCTime)
 import Hyperion.Measurement (Sample)
 import Hyperion.Internal
 
+-- | Extra metadata provided by the user
+newtype UserMetadata = UserMetadata
+  { unUserMetadata :: [(Text, Text)]
+  } deriving Monoid
+
 data Report = Report
   { _reportBenchName :: !Text
   , _reportBenchParams :: [Int]
@@ -39,7 +45,7 @@ json
   -- ^ Host
   -> HashMap BenchmarkId Report
   -- ^ Report to encode
-  -> [(Text, Text)]
+  -> UserMetadata
   -- ^ Extra user metadata
   -> JSON.Value
 json timestamp hostId report md =
@@ -47,8 +53,8 @@ json timestamp hostId report md =
       [ "metadata" .= JSON.object (
           -- append 'mdJson' at the end so that the user can rewrite
           -- @timestamp@, for instance
-          [ "timestamp" .= timestamp, "location" .= hostId ] <> mdJson)
+          [ "timestamp" .= timestamp, "location" .= hostId ] <>
+              ((fmap JSON.toJSON) <$> (unUserMetadata md))
+        )
       , "results" .= HashMap.elems report
       ]
-  where
-    mdJson = ((fmap JSON.toJSON) <$> md)
