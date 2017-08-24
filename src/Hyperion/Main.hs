@@ -131,11 +131,12 @@ options = do
             (Options.long "raw" <>
              Options.help "Include raw measurement data in report."))
      configMonoidExtraMetadata <-
-       many
+       UserMetadata <$> many
          (Options.option
             toTup
             (Options.long "arg" <>
-             Options.help "Include raw measurement data in report."))
+             Options.metavar "KEY:VAL" <>
+             Options.help "Extra metadata to include in the report, in the format key:value."))
      -- TODO allow setting this from CLI.
      pure ConfigMonoid{..}
   where
