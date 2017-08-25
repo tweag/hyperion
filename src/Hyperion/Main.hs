@@ -57,6 +57,7 @@ data ConfigMonoid = ConfigMonoid
   , configMonoidRaw :: First Bool
   , configMonoidSamplingStrategy :: First SamplingStrategy
   , configMonoidUserMetadata :: JSON.Object
+  , configMonoidPattern :: First Text
   } deriving (Generic, Show)
 
 instance Monoid ConfigMonoid where
@@ -70,6 +71,7 @@ data Config = Config
   , configRaw :: Bool
   , configSamplingStrategy :: SamplingStrategy
   , configUserMetadata :: JSON.Object
+  , configPattern :: Maybe Text
   } deriving (Generic, Show)
 
 fromFirst :: a -> First a -> a
@@ -83,6 +85,7 @@ configFromMonoid ConfigMonoid{..} = Config
     , configRaw = fromFirst False configMonoidRaw
     , configSamplingStrategy = fromFirst defaultStrategy configMonoidSamplingStrategy
     , configUserMetadata = configMonoidUserMetadata
+    , configPattern = getFirst configMonoidPattern
     }
 
 options :: Options.Parser ConfigMonoid
@@ -127,6 +130,12 @@ options = do
             (Options.long "arg" <>
              Options.metavar "KEY:VAL" <>
              Options.help "Extra metadata to include in the report, in the format key:value."))
+     configMonoidPattern <-
+       First <$> optional
+         (pack <$> Options.strOption
+            (Options.long "pattern" <>
+             Options.short 'p' <>
+             Options.help "Select only tests that match pattern (infix)"))
      pure ConfigMonoid{..}
   where
      -- TODO allow setting this from CLI.
@@ -158,13 +167,26 @@ doList :: [Benchmark] -> IO ()
 doList bks =
     mapM_ Text.putStrLn $ bks^..folded.identifiers.to renderBenchmarkId
 
-doRun :: SamplingStrategy -> [Benchmark] -> IO (HashMap BenchmarkId Sample)
-doRun strategy bks = do
+-- | Create a 'BenchmarkPredicate' that selects only the benchmarks whose names
+-- contain the given 'Text'.
+mkTextPredicate :: Text.Text -> BenchmarkPredicate
+mkTextPredicate txt = BenchmarkPredicate $ \bid ->
+    Text.isInfixOf txt $ renderBenchmarkId bid
+
+doRun
+  :: SamplingStrategy
+  -> Maybe BenchmarkPredicate
+  -- ^ Predicate selecting which benchmarks to run. If 'Nothing', all
+  -- benchmarks are run.
+  -> [Benchmark]
+  -> IO (HashMap BenchmarkId Sample)
+doRun strategy prd bks = do
     let ids = bks^..folded.identifiers
     -- Better asymptotics than nub.
     unless (length (group (sort ids)) == length ids) $
       throwIO $ DuplicateIdentifiers [ n | n:_:_ <- group (sort ids) ]
-    foldMap (runBenchmark (uniform strategy)) bks
+    let strat = maybe uniform filtered prd
+    foldMap (runBenchmark (strat strategy)) bks
 
 doAnalyze
   :: Config -- ^ Hyperion config.
@@ -185,7 +207,8 @@ doAnalyze Config{..} packageName bks = do
           IO.openFile (path </> filename) IO.WriteMode
         else
           IO.openFile path IO.WriteMode
-    results <- doRun configSamplingStrategy bks
+    results <- doRun configSamplingStrategy
+      (mkTextPredicate <$> configPattern) bks
     let strip
           | configRaw = id
           | otherwise = reportMeasurements .~ Nothing
@@ -219,7 +242,9 @@ defaultMainWith presetConfig packageName bks = do
       Config{..} -> case configMode of
         Version -> putStrLn $ "Hyperion " <> showVersion version
         List -> doList bks
-        Run -> do _ <- doRun configSamplingStrategy bks; return ()
+        Run -> do
+          _ <- doRun configSamplingStrategy (mkTextPredicate <$> configPattern) bks
+          return ()
         Analyze -> doAnalyze config (pack packageName) bks
 
 defaultMain
