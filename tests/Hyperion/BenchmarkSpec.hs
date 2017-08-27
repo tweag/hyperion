@@ -51,5 +51,5 @@ spec = do
       it "returns as many samples as there are benchmarks" $ property $ \b ->
         not (hasSeries b) ==>
         monadicIO $ do
-          results <- run $ runBenchmarkWithConfig (fixed 1) b
+          results <- run $ runBenchmark (uniform (fixed 1)) b
           assert (length results == length (nub (b^..identifiers)))
