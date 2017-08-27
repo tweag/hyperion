@@ -155,7 +155,10 @@ reportOutputParse =
     (ReportJson <$> Options.strOption
       (Options.long "json" <>
        Options.short 'j' <>
-       Options.help "Where to write the json benchmarks output. Can be a directory name" <>
+       Options.help (unwords
+          ["Where to write the json benchmarks output."
+          ,"Can be a file name, a directory name or '-' for stdout."
+          ]) <>
        Options.metavar "PATH"))
 
 -- | The path to the null output file. This is @"nul"@ on Windows and
@@ -205,6 +208,7 @@ openReportHandle
   :: ContextInfo
   -> ReportOutput FilePath -> IO (ReportOutput IO.Handle)
 openReportHandle _ ReportPretty = pure ReportPretty
+openReportHandle _ (ReportJson "-") = pure $ ReportJson IO.stdout
 openReportHandle cinfo (ReportJson path) = ReportJson <$> do
     let packageName = unpack $ contextPackageName cinfo
         executableName = unpack $ contextExecutableName cinfo
