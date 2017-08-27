@@ -20,6 +20,7 @@ import Control.Monad (unless, when, mzero)
 import qualified Data.Aeson as JSON
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.HashMap.Strict (HashMap)
+import qualified Data.HashMap.Strict as HashMap
 import Data.List (group, sort)
 import Data.Maybe (fromMaybe)
 import Data.Monoid
@@ -55,7 +56,7 @@ data ConfigMonoid = ConfigMonoid
   , configMonoidPretty :: First Bool
   , configMonoidRaw :: First Bool
   , configMonoidSamplingStrategy :: First SamplingStrategy
-  , configMonoidUserMetadata :: [(Text, Text)]
+  , configMonoidUserMetadata :: JSON.Object
   } deriving (Generic, Show)
 
 instance Monoid ConfigMonoid where
@@ -68,7 +69,7 @@ data Config = Config
   , configPretty :: Bool
   , configRaw :: Bool
   , configSamplingStrategy :: SamplingStrategy
-  , configUserMetadata :: [(Text, Text)]
+  , configUserMetadata :: JSON.Object
   } deriving (Generic, Show)
 
 fromFirst :: a -> First a -> a
@@ -120,9 +121,9 @@ options = do
             (Options.long "raw" <>
              Options.help "Include raw measurement data in report."))
      configMonoidUserMetadata <-
-       many
+       HashMap.fromList <$> many
          (Options.option
-            toTup
+            parseKV
             (Options.long "arg" <>
              Options.metavar "KEY:VAL" <>
              Options.help "Extra metadata to include in the report, in the format key:value."))
@@ -130,10 +131,10 @@ options = do
   where
      -- TODO allow setting this from CLI.
     configMonoidSamplingStrategy = First Nothing
-    toTup = do
+    parseKV = do
       txt <- Text.pack <$> Options.str
       case Text.splitOn ":" txt of
-        [x,y] -> pure (x,y)
+        [x,y] -> pure (x, JSON.String y)
         _ -> mzero
 
 -- | The path to the null output file. This is @"nul"@ on Windows and

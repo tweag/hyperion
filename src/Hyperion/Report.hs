@@ -36,16 +36,14 @@ deriveJSON defaultOptions{ fieldLabelModifier = camelTo2 '_' . drop (length @[] 
 json
   :: UTCTime -- ^ Current time
   -> Maybe Text -- ^ Host
-  -> [(Text, Text)] -- ^ Extra user metadata
+  -> JSON.Object -- ^ Extra user metadata
   -> HashMap BenchmarkId Report -- ^ Report to encode
   -> JSON.Value
 json timestamp hostId md report =
     JSON.object
-      [ "metadata" .= JSON.object (
-          -- append metadata at the end so that the user can rewrite
-          -- @timestamp@, for instance
-          [ "timestamp" .= timestamp, "location" .= hostId ]
-              <> (fmap JSON.toJSON <$> md)
-        )
+      [ "metadata" .=
+          -- Append metadata at the end so that the user can rewrite
+          -- @timestamp@, for instance.
+          (HashMap.fromList [ "timestamp" .= timestamp, "location" .= hostId ] <> md)
       , "results" .= HashMap.elems report
       ]
