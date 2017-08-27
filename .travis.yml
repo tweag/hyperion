@@ -3,9 +3,9 @@ language: c
 
 env:
   - ARGS=""
-  - ARGS="--resolver lts-2"
-  - ARGS="--resolver lts-6"
-  - ARGS="--resolver lts-8"
+  - ARGS="--resolver lts-2" # GHC 7.8.4
+  - ARGS="--resolver lts-6" # GHC 7.10.3
+  - ARGS="--resolver lts-8" # GHC 8.0.2
   - ARGS="--resolver nightly"
 
 addons:
