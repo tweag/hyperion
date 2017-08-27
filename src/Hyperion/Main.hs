@@ -57,7 +57,7 @@ data ConfigMonoid = ConfigMonoid
   , configMonoidRaw :: First Bool
   , configMonoidSamplingStrategy :: First SamplingStrategy
   , configMonoidUserMetadata :: JSON.Object
-  , configMonoidPattern :: First Text
+  , configMonoidSelectorPattern :: First Text
   } deriving (Generic, Show)
 
 instance Monoid ConfigMonoid where
@@ -71,7 +71,7 @@ data Config = Config
   , configRaw :: Bool
   , configSamplingStrategy :: SamplingStrategy
   , configUserMetadata :: JSON.Object
-  , configPattern :: Maybe Text
+  , configSelectorPattern :: Maybe Text
   } deriving (Generic, Show)
 
 fromFirst :: a -> First a -> a
@@ -85,7 +85,7 @@ configFromMonoid ConfigMonoid{..} = Config
     , configRaw = fromFirst False configMonoidRaw
     , configSamplingStrategy = fromFirst defaultStrategy configMonoidSamplingStrategy
     , configUserMetadata = configMonoidUserMetadata
-    , configPattern = getFirst configMonoidPattern
+    , configSelectorPattern = getFirst configMonoidSelectorPattern
     }
 
 options :: Options.Parser ConfigMonoid
@@ -130,7 +130,7 @@ options = do
             (Options.long "arg" <>
              Options.metavar "KEY:VAL" <>
              Options.help "Extra metadata to include in the report, in the format key:value."))
-     configMonoidPattern <-
+     configMonoidSelectorPattern <-
        First <$> optional
          (pack <$> Options.strOption
             (Options.long "pattern" <>
@@ -208,7 +208,7 @@ doAnalyze Config{..} packageName bks = do
         else
           IO.openFile path IO.WriteMode
     results <- doRun configSamplingStrategy
-      (mkTextPredicate <$> configPattern) bks
+      (mkTextPredicate <$> configSelectorPattern) bks
     let strip
           | configRaw = id
           | otherwise = reportMeasurements .~ Nothing
@@ -243,7 +243,11 @@ defaultMainWith presetConfig packageName bks = do
         Version -> putStrLn $ "Hyperion " <> showVersion version
         List -> doList bks
         Run -> do
-          _ <- doRun configSamplingStrategy (mkTextPredicate <$> configPattern) bks
+          _ <-
+            doRun
+              configSamplingStrategy
+              (mkTextPredicate <$> configSelectorPattern)
+              bks
           return ()
         Analyze -> doAnalyze config (pack packageName) bks
 
