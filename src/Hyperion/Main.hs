@@ -52,7 +52,7 @@ data ConfigMonoid = ConfigMonoid
   , configMonoidPretty :: First Bool
   , configMonoidRaw :: First Bool
   , configMonoidSamplingStrategy :: First SamplingStrategy
-  , configMonoidExtraMetadata :: [(Text, Text)]
+  , configMonoidUserMetadata :: [(Text, Text)]
   }
 
 instance Monoid ConfigMonoid where
@@ -71,7 +71,7 @@ instance Monoid ConfigMonoid where
       (mappend (configMonoidPretty c1) (configMonoidPretty c2))
       (mappend (configMonoidRaw c1) (configMonoidRaw c2))
       (mappend (configMonoidSamplingStrategy c1) (configMonoidSamplingStrategy c2))
-      (mappend (configMonoidExtraMetadata c1) (configMonoidExtraMetadata c2))
+      (mappend (configMonoidUserMetadata c1) (configMonoidUserMetadata c2))
 
 data Config = Config
   { configOutputPath :: Maybe FilePath
@@ -79,7 +79,7 @@ data Config = Config
   , configPretty :: Bool
   , configRaw :: Bool
   , configSamplingStrategy :: SamplingStrategy
-  , configExtraMetadata :: [(Text, Text)]
+  , configUserMetadata :: [(Text, Text)]
   }
 
 fromFirst :: a -> First a -> a
@@ -92,7 +92,7 @@ configFromMonoid ConfigMonoid{..} = Config
     , configPretty = fromFirst False configMonoidPretty
     , configRaw = fromFirst False configMonoidRaw
     , configSamplingStrategy = fromFirst defaultStrategy configMonoidSamplingStrategy
-    , configExtraMetadata = configMonoidExtraMetadata
+    , configUserMetadata = configMonoidUserMetadata
     }
 
 options :: Options.Parser ConfigMonoid
@@ -130,7 +130,7 @@ options = do
          (Options.switch
             (Options.long "raw" <>
              Options.help "Include raw measurement data in report."))
-     configMonoidExtraMetadata <-
+     configMonoidUserMetadata <-
        many
          (Options.option
             toTup
@@ -202,7 +202,7 @@ doAnalyze Config{..} packageName bks = do
         report = results & imapped %@~ analyze & mapped %~ strip
     now <- getCurrentTime
     BS.hPutStrLn h $ JSON.encode $
-      json now Nothing configExtraMetadata report
+      json now Nothing configUserMetadata report
     when configPretty (printReports report)
     maybe (return ()) (\_ -> IO.hClose h) configOutputPath
 
