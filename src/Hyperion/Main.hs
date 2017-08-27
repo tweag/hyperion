@@ -17,6 +17,8 @@ import Control.Applicative
 import Control.Exception (Exception, throwIO)
 import Control.Lens ((&), (.~), (%~), (%@~), (^..), folded, imapped, mapped, to)
 import Control.Monad (unless, when, mzero)
+import qualified Data.Aeson as JSON
+import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.HashMap.Strict (HashMap)
 import Data.List (group, sort)
 import Data.Maybe (fromMaybe)
@@ -27,8 +29,8 @@ import qualified Data.Text.IO as Text
 import Data.Time (getCurrentTime)
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)
-import Generics.Deriving.Monoid (memptydefault, mappenddefault)
 import GHC.Generics (Generic)
+import Generics.Deriving.Monoid (memptydefault, mappenddefault)
 import Hyperion.Analysis
 import Hyperion.Benchmark
 import Hyperion.Internal
@@ -36,15 +38,13 @@ import Hyperion.Measurement
 import Hyperion.PrintReport
 import Hyperion.Report
 import Hyperion.Run
-import qualified Data.ByteString.Lazy.Char8 as BS
-import qualified Data.Aeson as JSON
 import qualified Options.Applicative as Options
 import Paths_hyperion (version)
-import qualified System.IO as IO
 import System.Directory (createDirectoryIfMissing, doesDirectoryExist)
 import System.Environment (getProgName)
 import System.FilePath ((</>), (<.>))
 import System.FilePath.Posix (hasTrailingPathSeparator)
+import qualified System.IO as IO
 
 data Mode = Version | List | Run | Analyze
   deriving (Eq, Ord, Show)
