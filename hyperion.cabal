@@ -39,6 +39,7 @@ library
     directory,
     exceptions >= 0.8,
     filepath,
+    generic-deriving >= 1.11,
     hashable,
     lens >= 4.0,
     mtl >= 2.2,

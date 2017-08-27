@@ -1,5 +1,6 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -26,6 +27,8 @@ import qualified Data.Text.IO as Text
 import Data.Time (getCurrentTime)
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)
+import Generics.Deriving.Monoid (memptydefault, mappenddefault)
+import GHC.Generics (Generic)
 import Hyperion.Analysis
 import Hyperion.Benchmark
 import Hyperion.Internal
@@ -53,25 +56,11 @@ data ConfigMonoid = ConfigMonoid
   , configMonoidRaw :: First Bool
   , configMonoidSamplingStrategy :: First SamplingStrategy
   , configMonoidUserMetadata :: [(Text, Text)]
-  } deriving (Show)
+  } deriving (Generic, Show)
 
 instance Monoid ConfigMonoid where
-  mempty =
-    ConfigMonoid
-      mempty
-      mempty
-      mempty
-      mempty
-      mempty
-      mempty
-  mappend c1 c2 =
-    ConfigMonoid
-      (mappend (configMonoidOutputPath c1) (configMonoidOutputPath c2))
-      (mappend (configMonoidMode c1) (configMonoidMode c2))
-      (mappend (configMonoidPretty c1) (configMonoidPretty c2))
-      (mappend (configMonoidRaw c1) (configMonoidRaw c2))
-      (mappend (configMonoidSamplingStrategy c1) (configMonoidSamplingStrategy c2))
-      (mappend (configMonoidUserMetadata c1) (configMonoidUserMetadata c2))
+  mempty = memptydefault
+  mappend = mappenddefault
 
 data Config = Config
   { configOutputPath :: Maybe FilePath
@@ -80,7 +69,7 @@ data Config = Config
   , configRaw :: Bool
   , configSamplingStrategy :: SamplingStrategy
   , configUserMetadata :: [(Text, Text)]
-  } deriving (Show)
+  } deriving (Generic, Show)
 
 fromFirst :: a -> First a -> a
 fromFirst x = fromMaybe x . getFirst
