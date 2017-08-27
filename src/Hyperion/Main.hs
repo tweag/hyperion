@@ -54,7 +54,7 @@ data Mode = Version | List | Run | Analyze
   deriving (Eq, Ord, Show)
 
 -- | Specify a particular way of reporting the benchmark results.
-data ReportOutput a = ReportPretty | ReportJson a
+data ReportOutput a = ReportPretty | ReportJson a | ReportJsonFlat a
   deriving (Functor, Eq, Ord, Show)
 
 -- | Context information about the benchmark.
@@ -158,6 +158,14 @@ reportOutputParse =
           ["Where to write the json benchmarks output."
           ,"Can be a file name, a directory name or '-' for stdout."
           ]) <>
+       Options.metavar "PATH")) <|>
+    (ReportJsonFlat <$> Options.strOption
+      (Options.long "flat" <>
+       Options.short 'f' <>
+       Options.help (unwords
+          ["Where to write the json benchmarks output."
+          ,"Can be a file name, a directory name or '-' for stdout."
+          ]) <>
        Options.metavar "PATH"))
 
 -- | The path to the null output file. This is @"nul"@ on Windows and
@@ -212,14 +220,23 @@ printReport ReportPretty _ report = printReports report
 printReport (ReportJson h) metadata report =
     BS.hPutStrLn h $ JSON.encode $
       json metadata report
+printReport (ReportJsonFlat h) metadata report =
+    BS.hPutStrLn h $ JSON.encode $
+      jsonFlat metadata report
 
 -- | Open a 'Handle' for given report (if needed).
 openReportHandle
   :: ContextInfo
   -> ReportOutput FilePath -> IO (ReportOutput IO.Handle)
 openReportHandle _ ReportPretty = pure ReportPretty
-openReportHandle _ (ReportJson "-") = pure $ ReportJson IO.stdout
-openReportHandle cinfo (ReportJson path) = ReportJson <$> do
+openReportHandle cinfo (ReportJson path) =
+    ReportJson <$> openReportFileHandle cinfo path
+openReportHandle cinfo (ReportJsonFlat path) =
+    ReportJsonFlat <$> openReportFileHandle cinfo path
+
+openReportFileHandle :: ContextInfo -> FilePath -> IO IO.Handle
+openReportFileHandle _ "-" = pure IO.stdout
+openReportFileHandle cinfo path = do
     let packageName = unpack $ contextPackageName cinfo
         executableName = unpack $ contextExecutableName cinfo
     dirExists <- doesDirectoryExist path
@@ -235,6 +252,7 @@ openReportHandle cinfo (ReportJson path) = ReportJson <$> do
 closeReportHandle :: ReportOutput IO.Handle -> IO ()
 closeReportHandle ReportPretty = return ()
 closeReportHandle (ReportJson h) = IO.hClose h
+closeReportHandle (ReportJsonFlat h) = IO.hClose h
 
 doAnalyze
   :: Config -- ^ Hyperion config.
