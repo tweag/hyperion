@@ -137,9 +137,9 @@ options = do
             (Options.long "arg" <>
              Options.metavar "KEY:VAL" <>
              Options.help "Extra metadata to include in the report, in the format key:value."))
-     -- TODO allow setting this from CLI.
      pure ConfigMonoid{..}
   where
+     -- TODO allow setting this from CLI.
     configMonoidSamplingStrategy = First Nothing
     toTup = do
       txt <- Text.pack <$> Options.str
