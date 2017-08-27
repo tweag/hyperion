@@ -202,7 +202,7 @@ doAnalyze Config{..} packageName bks = do
         report = results & imapped %@~ analyze & mapped %~ strip
     now <- getCurrentTime
     BS.hPutStrLn h $ JSON.encode $
-      json now Nothing report configExtraMetadata
+      json now Nothing configExtraMetadata report
     when configPretty (printReports report)
     maybe (return ()) (\_ -> IO.hClose h) configOutputPath
 

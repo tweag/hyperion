@@ -39,16 +39,12 @@ makeLenses ''Report
 deriveJSON defaultOptions{ fieldLabelModifier = camelTo2 '_' . drop (length @[] "_report") } ''Report
 
 json
-  :: UTCTime
-  -- ^ Current time
-  -> Maybe Text
-  -- ^ Host
-  -> HashMap BenchmarkId Report
-  -- ^ Report to encode
-  -> UserMetadata
-  -- ^ Extra user metadata
+  :: UTCTime -- ^ Current time
+  -> Maybe Text -- ^ Host
+  -> UserMetadata -- ^ Extra user metadata
+  -> HashMap BenchmarkId Report -- ^ Report to encode
   -> JSON.Value
-json timestamp hostId report md =
+json timestamp hostId md report =
     JSON.object
       [ "metadata" .= JSON.object (
           -- append metadata at the end so that the user can rewrite
