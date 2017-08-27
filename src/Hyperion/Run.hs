@@ -11,7 +11,6 @@ module Hyperion.Run
   , shuffle
   , reorder
     -- * Sampling strategy selectors
-  , BenchmarkPredicate(..)
   , filtered
   , uniform
     -- * Sampling strategies
@@ -59,10 +58,6 @@ instance (Monad m, Monoid a) => Monoid (StateT' s m a) where
 -- | Sampling strategy.
 newtype SamplingStrategy = SamplingStrategy (Batch () -> IO Sample)
   deriving (Monoid, Show)
-
--- | 'BenchmarkId'-based predicate for benchmark selection.
-newtype BenchmarkPredicate = BenchmarkPredicate
-  { unBenchmarkPredicate :: BenchmarkId -> Bool }
 
 -- | Provided a sampling strategy (which can be keyed on the 'BenchmarkId'),
 -- sample the runtime of all the benchmark cases in the given benchmark tree.
@@ -141,9 +136,12 @@ uniform = const . Just
 
 -- | Sampling strategies that filters the benchmarks based on a predicate: a
 -- benchmark is included iff the predicate is 'True'.
-filtered :: BenchmarkPredicate -> SamplingStrategy -> (BenchmarkId -> Maybe SamplingStrategy)
+filtered
+  :: (BenchmarkId -> Bool)
+  -> SamplingStrategy
+  -> (BenchmarkId -> Maybe SamplingStrategy)
 filtered p ss bid =
-    if unBenchmarkPredicate p bid then Just ss else Nothing
+    if p bid then Just ss else Nothing
 
 -- | Default to 100 samples, for each batch size from 1 to 20 with a geometric
 -- progression of 1.2.

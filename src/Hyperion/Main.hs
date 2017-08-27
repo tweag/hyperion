@@ -167,26 +167,25 @@ doList :: [Benchmark] -> IO ()
 doList bks =
     mapM_ Text.putStrLn $ bks^..folded.identifiers.to renderBenchmarkId
 
--- | Create a 'BenchmarkPredicate' that selects only the benchmarks whose names
--- contain the given 'Text'.
-mkTextPredicate :: Text.Text -> BenchmarkPredicate
-mkTextPredicate txt = BenchmarkPredicate $ \bid ->
-    Text.isInfixOf txt $ renderBenchmarkId bid
+-- | Derive a 'SamplingStrategy' indexed by 'BenchmarkId' from the current
+-- configuration.
+indexedStrategy :: Config -> (BenchmarkId -> Maybe SamplingStrategy)
+indexedStrategy Config{..} = case configSelectorPattern of
+    Nothing -> uniform configSamplingStrategy
+    Just patt -> filtered f configSamplingStrategy
+      where
+        f = Text.isInfixOf patt . renderBenchmarkId
 
 doRun
-  :: SamplingStrategy
-  -> Maybe BenchmarkPredicate
-  -- ^ Predicate selecting which benchmarks to run. If 'Nothing', all
-  -- benchmarks are run.
+  :: (BenchmarkId -> Maybe SamplingStrategy)
   -> [Benchmark]
   -> IO (HashMap BenchmarkId Sample)
-doRun strategy prd bks = do
+doRun strategy bks = do
     let ids = bks^..folded.identifiers
     -- Better asymptotics than nub.
     unless (length (group (sort ids)) == length ids) $
       throwIO $ DuplicateIdentifiers [ n | n:_:_ <- group (sort ids) ]
-    let strat = maybe uniform filtered prd
-    foldMap (runBenchmark (strat strategy)) bks
+    foldMap (runBenchmark strategy) bks
 
 doAnalyze
   :: Config -- ^ Hyperion config.
@@ -207,8 +206,7 @@ doAnalyze Config{..} packageName bks = do
           IO.openFile (path </> filename) IO.WriteMode
         else
           IO.openFile path IO.WriteMode
-    results <- doRun configSamplingStrategy
-      (mkTextPredicate <$> configSelectorPattern) bks
+    results <- doRun (indexedStrategy Config{..}) bks
     let strip
           | configRaw = id
           | otherwise = reportMeasurements .~ Nothing
@@ -224,7 +222,6 @@ doAnalyze Config{..} packageName bks = do
     BS.hPutStrLn h $ JSON.encode $ json metadata report
     when configPretty (printReports report)
     maybe (return ()) (\_ -> IO.hClose h) configOutputPath
-
 
 defaultMainWith
   :: ConfigMonoid -- ^ Preset Hyperion config.
@@ -243,11 +240,7 @@ defaultMainWith presetConfig packageName bks = do
         Version -> putStrLn $ "Hyperion " <> showVersion version
         List -> doList bks
         Run -> do
-          _ <-
-            doRun
-              configSamplingStrategy
-              (mkTextPredicate <$> configSelectorPattern)
-              bks
+          _ <- doRun (indexedStrategy config) bks
           return ()
         Analyze -> doAnalyze config (pack packageName) bks
 
