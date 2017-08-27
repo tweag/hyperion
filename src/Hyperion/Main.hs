@@ -191,10 +191,17 @@ doAnalyze Config{..} packageName bks = do
           | otherwise = reportMeasurements .~ Nothing
         report = results & imapped %@~ analyze & mapped %~ strip
     now <- getCurrentTime
-    BS.hPutStrLn h $ JSON.encode $
-      json now Nothing configUserMetadata report
+    let -- TODO Use output of hostname(1) as reasonable default.
+        hostId = Nothing :: Maybe Text
+        metadata =
+          -- Append user metadata at the end so that the user can rewrite
+          -- @timestamp@, for instance.
+          HashMap.fromList [ "timestamp" JSON..= now, "location" JSON..= hostId ]
+            <> configUserMetadata
+    BS.hPutStrLn h $ JSON.encode $ json metadata report
     when configPretty (printReports report)
     maybe (return ()) (\_ -> IO.hClose h) configOutputPath
+
 
 defaultMainWith
   :: ConfigMonoid -- ^ Preset Hyperion config.

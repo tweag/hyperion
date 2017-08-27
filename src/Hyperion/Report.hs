@@ -15,9 +15,7 @@ import Data.Aeson.Types (camelTo2)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Int
-import Data.Monoid
 import Data.Text (Text)
-import Data.Time (UTCTime)
 import Hyperion.Measurement (Sample)
 import Hyperion.Internal
 
@@ -34,16 +32,11 @@ makeLenses ''Report
 deriveJSON defaultOptions{ fieldLabelModifier = camelTo2 '_' . drop (length @[] "_report") } ''Report
 
 json
-  :: UTCTime -- ^ Current time
-  -> Maybe Text -- ^ Host
-  -> JSON.Object -- ^ Extra user metadata
+  :: JSON.Object -- ^ Metadata
   -> HashMap BenchmarkId Report -- ^ Report to encode
   -> JSON.Value
-json timestamp hostId md report =
+json md report =
     JSON.object
-      [ "metadata" .=
-          -- Append metadata at the end so that the user can rewrite
-          -- @timestamp@, for instance.
-          (HashMap.fromList [ "timestamp" .= timestamp, "location" .= hostId ] <> md)
+      [ "metadata" .= md
       , "results" .= HashMap.elems report
       ]
