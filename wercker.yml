@@ -1,4 +1,4 @@
-box: fpco/stack-build:lts-7.14
+box: fpco/stack-build:lts-9.0
 
 build:
   steps:
