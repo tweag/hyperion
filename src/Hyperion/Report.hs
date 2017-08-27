@@ -21,11 +21,6 @@ import Data.Time (UTCTime)
 import Hyperion.Measurement (Sample)
 import Hyperion.Internal
 
--- | Extra metadata provided by the user
-newtype UserMetadata = UserMetadata
-  { unUserMetadata :: [(Text, Text)]
-  } deriving Monoid
-
 data Report = Report
   { _reportBenchName :: !Text
   , _reportBenchParams :: [Int]
@@ -41,7 +36,7 @@ deriveJSON defaultOptions{ fieldLabelModifier = camelTo2 '_' . drop (length @[] 
 json
   :: UTCTime -- ^ Current time
   -> Maybe Text -- ^ Host
-  -> UserMetadata -- ^ Extra user metadata
+  -> [(Text, Text)] -- ^ Extra user metadata
   -> HashMap BenchmarkId Report -- ^ Report to encode
   -> JSON.Value
 json timestamp hostId md report =
@@ -49,8 +44,8 @@ json timestamp hostId md report =
       [ "metadata" .= JSON.object (
           -- append metadata at the end so that the user can rewrite
           -- @timestamp@, for instance
-          [ "timestamp" .= timestamp, "location" .= hostId ] <>
-              ((fmap JSON.toJSON) <$> (unUserMetadata md))
+          [ "timestamp" .= timestamp, "location" .= hostId ]
+              <> (fmap JSON.toJSON <$> md)
         )
       , "results" .= HashMap.elems report
       ]

@@ -52,7 +52,7 @@ data ConfigMonoid = ConfigMonoid
   , configMonoidPretty :: First Bool
   , configMonoidRaw :: First Bool
   , configMonoidSamplingStrategy :: First SamplingStrategy
-  , configMonoidExtraMetadata :: UserMetadata
+  , configMonoidExtraMetadata :: [(Text, Text)]
   }
 
 instance Monoid ConfigMonoid where
@@ -79,7 +79,7 @@ data Config = Config
   , configPretty :: Bool
   , configRaw :: Bool
   , configSamplingStrategy :: SamplingStrategy
-  , configExtraMetadata :: UserMetadata
+  , configExtraMetadata :: [(Text, Text)]
   }
 
 fromFirst :: a -> First a -> a
@@ -131,7 +131,7 @@ options = do
             (Options.long "raw" <>
              Options.help "Include raw measurement data in report."))
      configMonoidExtraMetadata <-
-       UserMetadata <$> many
+       many
          (Options.option
             toTup
             (Options.long "arg" <>
