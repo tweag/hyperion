@@ -53,7 +53,7 @@ data ConfigMonoid = ConfigMonoid
   , configMonoidRaw :: First Bool
   , configMonoidSamplingStrategy :: First SamplingStrategy
   , configMonoidUserMetadata :: [(Text, Text)]
-  }
+  } deriving (Show)
 
 instance Monoid ConfigMonoid where
   mempty =
@@ -80,7 +80,7 @@ data Config = Config
   , configRaw :: Bool
   , configSamplingStrategy :: SamplingStrategy
   , configUserMetadata :: [(Text, Text)]
-  }
+  } deriving (Show)
 
 fromFirst :: a -> First a -> a
 fromFirst x = fromMaybe x . getFirst

@@ -4,7 +4,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RecordWildCards #-}
 
-
 module Hyperion.Run
   ( -- * Run benchmarks
     runBenchmark
@@ -44,6 +43,7 @@ import Hyperion.Measurement
 import qualified System.Clock as Clock
 import System.Random (RandomGen(..))
 import qualified System.Random.Shuffle as SRS
+import Text.Show.Functions ()
 
 -- | Local private copy of 'StateT' to hang our otherwise orphan 'Monoid'
 -- instance to. This instance is missing from transformers.
@@ -56,7 +56,7 @@ instance (Monad m, Monoid a) => Monoid (StateT' s m a) where
 
 -- | Sampling strategy.
 newtype SamplingStrategy = SamplingStrategy (Batch () -> IO Sample)
-  deriving (Monoid)
+  deriving (Monoid, Show)
 
 -- | Provided a sampling strategy (which can be keyed on the 'BenchmarkId'),
 -- sample the runtime of all the benchmark cases in the given benchmark tree.
