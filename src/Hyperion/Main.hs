@@ -1,6 +1,7 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -14,9 +15,9 @@ module Hyperion.Main
   ) where
 
 import Control.Applicative
-import Control.Exception (Exception, throwIO)
+import Control.Exception (Exception, throwIO, bracket)
 import Control.Lens ((&), (.~), (%~), (%@~), (^..), folded, imapped, mapped, to)
-import Control.Monad (unless, when, mzero)
+import Control.Monad (unless, mzero, void)
 import qualified Data.Aeson as JSON
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.HashMap.Strict (HashMap)
@@ -24,6 +25,8 @@ import qualified Data.HashMap.Strict as HashMap
 import Data.List (group, sort)
 import Data.Maybe (fromMaybe)
 import Data.Monoid
+import Data.Set (Set)
+import qualified Data.Set as Set
 import Data.Text (pack, Text, unpack)
 import qualified Data.Text as Text
 import qualified Data.Text.IO as Text
@@ -50,10 +53,19 @@ import qualified System.IO as IO
 data Mode = Version | List | Run | Analyze
   deriving (Eq, Ord, Show)
 
+-- | Specify a particular way of reporting the benchmark results.
+data ReportOutput a = ReportPretty | ReportJson a
+  deriving (Functor, Eq, Ord, Show)
+
+-- | Context information about the benchmark.
+data ContextInfo = ContextInfo
+  { contextPackageName :: Text
+  , contextExecutableName :: Text
+  }
+
 data ConfigMonoid = ConfigMonoid
-  { configMonoidOutputPath :: First FilePath
+  { configMonoidReportOutputs :: [ReportOutput FilePath]
   , configMonoidMode :: First Mode
-  , configMonoidPretty :: First Bool
   , configMonoidRaw :: First Bool
   , configMonoidSamplingStrategy :: First SamplingStrategy
   , configMonoidUserMetadata :: JSON.Object
@@ -65,9 +77,8 @@ instance Monoid ConfigMonoid where
   mappend = mappenddefault
 
 data Config = Config
-  { configOutputPath :: Maybe FilePath
+  { configReportOutputs :: Set (ReportOutput FilePath)
   , configMode :: Mode
-  , configPretty :: Bool
   , configRaw :: Bool
   , configSamplingStrategy :: SamplingStrategy
   , configUserMetadata :: JSON.Object
@@ -79,9 +90,11 @@ fromFirst x = fromMaybe x . getFirst
 
 configFromMonoid :: ConfigMonoid -> Config
 configFromMonoid ConfigMonoid{..} = Config
-    { configOutputPath = getFirst configMonoidOutputPath
+    { configReportOutputs =
+        if null configMonoidReportOutputs
+        then Set.singleton ReportPretty
+        else Set.fromList configMonoidReportOutputs
     , configMode = fromFirst Analyze configMonoidMode
-    , configPretty = fromFirst False configMonoidPretty
     , configRaw = fromFirst False configMonoidRaw
     , configSamplingStrategy = fromFirst defaultStrategy configMonoidSamplingStrategy
     , configUserMetadata = configMonoidUserMetadata
@@ -90,13 +103,7 @@ configFromMonoid ConfigMonoid{..} = Config
 
 options :: Options.Parser ConfigMonoid
 options = do
-     configMonoidOutputPath <-
-       First <$> optional
-         (Options.strOption
-            (Options.long "output" <>
-             Options.short 'o' <>
-             Options.help "Where to write the benchmarks output. Can be a directory name" <>
-             Options.metavar "PATH"))
+     configMonoidReportOutputs <- many reportOutputParse
      configMonoidMode <-
        First <$> optional
          (Options.flag' Version
@@ -113,11 +120,6 @@ options = do
           Options.flag' Run
             (Options.long "no-analyze" <>
              Options.help "Only run the benchmarks"))
-     configMonoidPretty <-
-       First <$> optional
-         (Options.switch
-            (Options.long "pretty" <>
-             Options.help "Pretty prints the measurements on stdout."))
      configMonoidRaw <-
        First <$> optional
          (Options.switch
@@ -143,6 +145,20 @@ options = do
       case Text.splitOn ":" txt of
         [x,y] -> pure (x, JSON.String y)
         _ -> mzero
+
+reportOutputParse :: Options.Parser (ReportOutput FilePath)
+reportOutputParse =
+    (ReportPretty <$ Options.flag' ()
+       (Options.long "pretty" <>
+        Options.help "Pretty prints the measurements on stdout.")) <|>
+    (ReportJson <$> Options.strOption
+      (Options.long "json" <>
+       Options.short 'j' <>
+       Options.help (unwords
+          ["Where to write the json benchmarks output."
+          ,"Can be a file name, a directory name or '-' for stdout."
+          ]) <>
+       Options.metavar "PATH"))
 
 -- | The path to the null output file. This is @"nul"@ on Windows and
 -- @"/dev/null"@ elsewhere.
@@ -185,25 +201,47 @@ doRun strategy bks = do
       throwIO $ DuplicateIdentifiers [ n | n:_:_ <- group (sort ids) ]
     foldMap (runBenchmark strategy) bks
 
+-- | Print the report.
+printReport
+  :: ReportOutput IO.Handle
+  -> JSON.Object -- ^ Metadata
+  -> HashMap BenchmarkId Report
+  -> IO ()
+-- XXX: should we print user metadata in pretty mode as well?
+printReport ReportPretty _ report = printReports report
+printReport (ReportJson h) metadata report =
+    BS.hPutStrLn h $ JSON.encode $
+      json metadata report
+
+-- | Open a 'Handle' for given report (if needed).
+openReportHandle
+  :: ContextInfo
+  -> ReportOutput FilePath -> IO (ReportOutput IO.Handle)
+openReportHandle _ ReportPretty = pure ReportPretty
+openReportHandle _ (ReportJson "-") = pure $ ReportJson IO.stdout
+openReportHandle cinfo (ReportJson path) = ReportJson <$> do
+    let packageName = unpack $ contextPackageName cinfo
+        executableName = unpack $ contextExecutableName cinfo
+    dirExists <- doesDirectoryExist path
+    if dirExists ||
+       hasTrailingPathSeparator path
+    then do
+      let filename = packageName <.> executableName <.> "json"
+      createDirectoryIfMissing True path -- Creates the directory if needed.
+      IO.openFile (path </> filename) IO.WriteMode
+    else
+      IO.openFile path IO.WriteMode
+
+closeReportHandle :: ReportOutput IO.Handle -> IO ()
+closeReportHandle ReportPretty = return ()
+closeReportHandle (ReportJson h) = IO.hClose h
+
 doAnalyze
   :: Config -- ^ Hyperion config.
-  -> Text -- ^ Package name.
+  -> ContextInfo -- ^ Benchmark context information.
   -> [Benchmark] -- ^ Benchmarks to be run.
   -> IO ()
-doAnalyze Config{..} packageName bks = do
-    executableName <- getProgName -- Name of the executable that launched the benches.
-    h <- case configOutputPath of
-      Nothing -> return IO.stdout
-      Just path -> do
-        dirExists <- doesDirectoryExist path
-        if dirExists ||
-           hasTrailingPathSeparator path
-        then do
-          let filename = (unpack packageName) <.> executableName <.> "json"
-          createDirectoryIfMissing True path -- Creates the directory if needed.
-          IO.openFile (path </> filename) IO.WriteMode
-        else
-          IO.openFile path IO.WriteMode
+doAnalyze Config{..} cinfo bks = do
     results <- doRun (indexedStrategy Config{..}) bks
     let strip
           | configRaw = id
@@ -217,9 +255,11 @@ doAnalyze Config{..} packageName bks = do
           -- Prepend user metadata so that the user can rewrite @timestamp@,
           -- for instance.
             <> HashMap.fromList [ "timestamp" JSON..= now, "location" JSON..= hostId ]
-    BS.hPutStrLn h $ JSON.encode $ json metadata report
-    when configPretty (printReports report)
-    maybe (return ()) (\_ -> IO.hClose h) configOutputPath
+    void $ bracket
+      (mapM (openReportHandle cinfo)
+        $ Set.toList configReportOutputs)
+      (mapM_ closeReportHandle)
+      (mapM (\h -> printReport h metadata report))
 
 defaultMainWith
   :: ConfigMonoid -- ^ Preset Hyperion config.
@@ -227,12 +267,17 @@ defaultMainWith
   -> [Benchmark] -- ^ Benchmarks to be run.
   -> IO ()
 defaultMainWith presetConfig packageName bks = do
+    executableName <- getProgName -- Name of the executable that launched the benches.
     cmdlineConfig <-
       Options.execParser
         (Options.info
           (Options.helper <*> options)
           Options.fullDesc)
     let config = configFromMonoid (cmdlineConfig <> presetConfig)
+        cinfo = ContextInfo
+          { contextPackageName = pack packageName
+          , contextExecutableName = pack executableName
+          }
     case config of
       Config{..} -> case configMode of
         Version -> putStrLn $ "Hyperion " <> showVersion version
@@ -240,7 +285,7 @@ defaultMainWith presetConfig packageName bks = do
         Run -> do
           _ <- doRun (indexedStrategy config) bks
           return ()
-        Analyze -> doAnalyze config (pack packageName) bks
+        Analyze -> doAnalyze config cinfo bks
 
 defaultMain
   :: String -- ^ Package name, user provided.
