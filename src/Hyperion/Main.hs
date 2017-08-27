@@ -135,7 +135,7 @@ options = do
          (pack <$> Options.strOption
             (Options.long "pattern" <>
              Options.short 'p' <>
-             Options.help "Select only tests that match pattern (infix)"))
+             Options.help "Select only tests that match pattern (prefix)."))
      pure ConfigMonoid{..}
   where
      -- TODO allow setting this from CLI.
@@ -174,7 +174,7 @@ indexedStrategy Config{..} = case configSelectorPattern of
     Nothing -> uniform configSamplingStrategy
     Just patt -> filtered f configSamplingStrategy
       where
-        f = Text.isInfixOf patt . renderBenchmarkId
+        f = Text.isPrefixOf patt . renderBenchmarkId
 
 doRun
   :: (BenchmarkId -> Maybe SamplingStrategy)
