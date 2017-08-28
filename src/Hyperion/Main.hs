@@ -57,7 +57,7 @@ data ConfigMonoid = ConfigMonoid
   , configMonoidRaw :: First Bool
   , configMonoidSamplingStrategy :: First SamplingStrategy
   , configMonoidUserMetadata :: JSON.Object
-  , configMonoidSelectorPattern :: First Text
+  , configMonoidSelectorPatterns :: [Text]
   } deriving (Generic, Show)
 
 instance Monoid ConfigMonoid where
@@ -71,7 +71,7 @@ data Config = Config
   , configRaw :: Bool
   , configSamplingStrategy :: SamplingStrategy
   , configUserMetadata :: JSON.Object
-  , configSelectorPattern :: Maybe Text
+  , configSelector :: Maybe (BenchmarkId -> Bool)
   } deriving (Generic, Show)
 
 fromFirst :: a -> First a -> a
@@ -85,7 +85,10 @@ configFromMonoid ConfigMonoid{..} = Config
     , configRaw = fromFirst False configMonoidRaw
     , configSamplingStrategy = fromFirst defaultStrategy configMonoidSamplingStrategy
     , configUserMetadata = configMonoidUserMetadata
-    , configSelectorPattern = getFirst configMonoidSelectorPattern
+    , configSelector = case configMonoidSelectorPatterns of
+        [] -> Nothing
+        patts -> Just $
+          \bid -> any (`Text.isPrefixOf` renderBenchmarkId bid) patts
     }
 
 options :: Options.Parser ConfigMonoid
@@ -130,12 +133,10 @@ options = do
             (Options.long "arg" <>
              Options.metavar "KEY:VAL" <>
              Options.help "Extra metadata to include in the report, in the format key:value."))
-     configMonoidSelectorPattern <-
-       First <$> optional
-         (pack <$> Options.strOption
-            (Options.long "pattern" <>
-             Options.short 'p' <>
-             Options.help "Select only tests that match pattern (prefix)."))
+     configMonoidSelectorPatterns <-
+       many
+         (pack <$> Options.argument Options.str
+            (Options.metavar "NAME..." ))
      pure ConfigMonoid{..}
   where
      -- TODO allow setting this from CLI.
@@ -170,11 +171,9 @@ doList bks =
 -- | Derive a 'SamplingStrategy' indexed by 'BenchmarkId' from the current
 -- configuration.
 indexedStrategy :: Config -> (BenchmarkId -> Maybe SamplingStrategy)
-indexedStrategy Config{..} = case configSelectorPattern of
+indexedStrategy Config{..} = case configSelector of
     Nothing -> uniform configSamplingStrategy
-    Just patt -> filtered f configSamplingStrategy
-      where
-        f = Text.isPrefixOf patt . renderBenchmarkId
+    Just f -> filtered f configSamplingStrategy
 
 doRun
   :: (BenchmarkId -> Maybe SamplingStrategy)
