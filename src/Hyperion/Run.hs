@@ -11,6 +11,7 @@ module Hyperion.Run
   , shuffle
   , reorder
     -- * Sampling strategy selectors
+  , filtered
   , uniform
     -- * Sampling strategies
   , SamplingStrategy(..)
@@ -132,6 +133,15 @@ timeBound maxTime batchSizes = SamplingStrategy $ \batch -> do
 -- benchmarks.
 uniform :: SamplingStrategy -> (BenchmarkId -> Maybe SamplingStrategy)
 uniform = const . Just
+
+-- | Sampling strategies that filters the benchmarks based on a predicate: a
+-- benchmark is included iff the predicate is 'True'.
+filtered
+  :: (BenchmarkId -> Bool)
+  -> SamplingStrategy
+  -> (BenchmarkId -> Maybe SamplingStrategy)
+filtered p ss bid =
+    if p bid then Just ss else Nothing
 
 -- | Default to 100 samples, for each batch size from 1 to 20 with a geometric
 -- progression of 1.2.

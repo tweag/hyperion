@@ -57,6 +57,7 @@ data ConfigMonoid = ConfigMonoid
   , configMonoidRaw :: First Bool
   , configMonoidSamplingStrategy :: First SamplingStrategy
   , configMonoidUserMetadata :: JSON.Object
+  , configMonoidSelectorPatterns :: [Text]
   } deriving (Generic, Show)
 
 instance Monoid ConfigMonoid where
@@ -70,6 +71,7 @@ data Config = Config
   , configRaw :: Bool
   , configSamplingStrategy :: SamplingStrategy
   , configUserMetadata :: JSON.Object
+  , configSelectorPatterns :: [Text]
   } deriving (Generic, Show)
 
 fromFirst :: a -> First a -> a
@@ -83,6 +85,7 @@ configFromMonoid ConfigMonoid{..} = Config
     , configRaw = fromFirst False configMonoidRaw
     , configSamplingStrategy = fromFirst defaultStrategy configMonoidSamplingStrategy
     , configUserMetadata = configMonoidUserMetadata
+    , configSelectorPatterns = configMonoidSelectorPatterns
     }
 
 options :: Options.Parser ConfigMonoid
@@ -127,6 +130,10 @@ options = do
             (Options.long "arg" <>
              Options.metavar "KEY:VAL" <>
              Options.help "Extra metadata to include in the report, in the format key:value."))
+     configMonoidSelectorPatterns <-
+       many
+         (pack <$> Options.argument Options.str
+            (Options.metavar "NAME..." ))
      pure ConfigMonoid{..}
   where
      -- TODO allow setting this from CLI.
@@ -158,13 +165,25 @@ doList :: [Benchmark] -> IO ()
 doList bks =
     mapM_ Text.putStrLn $ bks^..folded.identifiers.to renderBenchmarkId
 
-doRun :: SamplingStrategy -> [Benchmark] -> IO (HashMap BenchmarkId Sample)
+-- | Derive a 'SamplingStrategy' indexed by 'BenchmarkId' from the current
+-- configuration.
+indexedStrategy :: Config -> (BenchmarkId -> Maybe SamplingStrategy)
+indexedStrategy Config{..} = case configSelectorPatterns of
+    [] -> uniform configSamplingStrategy
+    patts -> filtered f configSamplingStrategy
+      where
+        f bid = any (`Text.isPrefixOf` renderBenchmarkId bid) patts
+
+doRun
+  :: (BenchmarkId -> Maybe SamplingStrategy)
+  -> [Benchmark]
+  -> IO (HashMap BenchmarkId Sample)
 doRun strategy bks = do
     let ids = bks^..folded.identifiers
     -- Better asymptotics than nub.
     unless (length (group (sort ids)) == length ids) $
       throwIO $ DuplicateIdentifiers [ n | n:_:_ <- group (sort ids) ]
-    foldMap (runBenchmark (uniform strategy)) bks
+    foldMap (runBenchmark strategy) bks
 
 doAnalyze
   :: Config -- ^ Hyperion config.
@@ -185,7 +204,7 @@ doAnalyze Config{..} packageName bks = do
           IO.openFile (path </> filename) IO.WriteMode
         else
           IO.openFile path IO.WriteMode
-    results <- doRun configSamplingStrategy bks
+    results <- doRun (indexedStrategy Config{..}) bks
     let strip
           | configRaw = id
           | otherwise = reportMeasurements .~ Nothing
@@ -201,7 +220,6 @@ doAnalyze Config{..} packageName bks = do
     BS.hPutStrLn h $ JSON.encode $ json metadata report
     when configPretty (printReports report)
     maybe (return ()) (\_ -> IO.hClose h) configOutputPath
-
 
 defaultMainWith
   :: ConfigMonoid -- ^ Preset Hyperion config.
@@ -219,7 +237,9 @@ defaultMainWith presetConfig packageName bks = do
       Config{..} -> case configMode of
         Version -> putStrLn $ "Hyperion " <> showVersion version
         List -> doList bks
-        Run -> do _ <- doRun configSamplingStrategy bks; return ()
+        Run -> do
+          _ <- doRun (indexedStrategy config) bks
+          return ()
         Analyze -> doAnalyze config (pack packageName) bks
 
 defaultMain
