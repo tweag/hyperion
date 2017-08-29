@@ -9,6 +9,7 @@ module Hyperion.Main
   ( defaultMain
   , Mode(..)
   , ConfigMonoid(..)
+  , ReportOutput(..)
   , nullOutputPath
   , defaultConfig
   , defaultMainWith

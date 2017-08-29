@@ -19,4 +19,4 @@ spec = do
       it "Analyzes uniquely identified benchmarks" $ property $ \b ->
         length (b^..identifiers) == length (group (sort (b^..identifiers))) ==>
         monadicIO $ run $
-          defaultMainWith defaultConfig{configMonoidOutputPath = return nullOutputPath} "specs" [b]
+          defaultMainWith defaultConfig{configMonoidReportOutputs = [ReportJson nullOutputPath]} "specs" [b]
