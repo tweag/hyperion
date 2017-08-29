@@ -71,7 +71,7 @@ data Config = Config
   , configRaw :: Bool
   , configSamplingStrategy :: SamplingStrategy
   , configUserMetadata :: JSON.Object
-  , configSelector :: Maybe (BenchmarkId -> Bool)
+  , configSelectorPatterns :: [Text]
   } deriving (Generic, Show)
 
 fromFirst :: a -> First a -> a
@@ -85,10 +85,7 @@ configFromMonoid ConfigMonoid{..} = Config
     , configRaw = fromFirst False configMonoidRaw
     , configSamplingStrategy = fromFirst defaultStrategy configMonoidSamplingStrategy
     , configUserMetadata = configMonoidUserMetadata
-    , configSelector = case configMonoidSelectorPatterns of
-        [] -> Nothing
-        patts -> Just $
-          \bid -> any (`Text.isPrefixOf` renderBenchmarkId bid) patts
+    , configSelectorPatterns = configMonoidSelectorPatterns
     }
 
 options :: Options.Parser ConfigMonoid
@@ -171,9 +168,11 @@ doList bks =
 -- | Derive a 'SamplingStrategy' indexed by 'BenchmarkId' from the current
 -- configuration.
 indexedStrategy :: Config -> (BenchmarkId -> Maybe SamplingStrategy)
-indexedStrategy Config{..} = case configSelector of
-    Nothing -> uniform configSamplingStrategy
-    Just f -> filtered f configSamplingStrategy
+indexedStrategy Config{..} = case configSelectorPatterns of
+    [] -> uniform configSamplingStrategy
+    patts -> filtered f configSamplingStrategy
+      where
+        f bid = any (`Text.isPrefixOf` renderBenchmarkId bid) patts
 
 doRun
   :: (BenchmarkId -> Maybe SamplingStrategy)
