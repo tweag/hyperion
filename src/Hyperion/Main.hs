@@ -194,10 +194,10 @@ doAnalyze Config{..} packageName bks = do
     let -- TODO Use output of hostname(1) as reasonable default.
         hostId = Nothing :: Maybe Text
         metadata =
-          -- Append user metadata at the end so that the user can rewrite
-          -- @timestamp@, for instance.
-          HashMap.fromList [ "timestamp" JSON..= now, "location" JSON..= hostId ]
-            <> configUserMetadata
+          configUserMetadata
+          -- Prepend user metadata so that the user can rewrite @timestamp@,
+          -- for instance.
+            <> HashMap.fromList [ "timestamp" JSON..= now, "location" JSON..= hostId ]
     BS.hPutStrLn h $ JSON.encode $ json metadata report
     when configPretty (printReports report)
     maybe (return ()) (\_ -> IO.hClose h) configOutputPath
