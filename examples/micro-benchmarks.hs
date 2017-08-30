@@ -10,7 +10,7 @@ import Hyperion.Main
 
 fact, fib :: Int -> Int
 fact n = if n == 0 then 1 else n * fact (n - 1)
-fib n = case n of 1 -> 1; 2 -> 1; _ -> fib (n - 1) + fib (n - 2)
+fib n = case n of 0 -> 0; 1 -> 1; _ -> fib (n - 1) + fib (n - 2)
 
 -- | Binomial coefficient
 choose :: Int -> Int -> Int
@@ -19,7 +19,7 @@ choose n k = fact n `div` (fact k * fact (n - k))
 benchmarks :: [Benchmark]
 benchmarks =
     [ bench "id" (nf id ())
-    , series [10..10] $ \n ->
+    , series [0,5..20] $ \n ->
         bgroup "pure-functions"
           [ bench "fact" (nf fact n)
           , bench "fib" (nf fib n)
