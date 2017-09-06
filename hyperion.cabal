@@ -5,6 +5,8 @@ description:         Please see README.md
 homepage:            https://github.com/tweag/hyperion#readme
 author:              Tweag I/O
 maintainer:          nicolas.mattia@tweag.io
+license:             BSD3
+license-file:        LICENSE
 category:            Benchmarking
 build-type:          Simple
 extra-source-files:  README.md
