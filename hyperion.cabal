@@ -1,10 +1,10 @@
 name:                hyperion
 version:             0.1.0.0
-synopsis:            Next generation microbenchmarking.
+synopsis:            Reliable performance measurement with robust data export.
 description:         Please see README.md
 homepage:            https://github.com/tweag/hyperion#readme
 author:              Tweag I/O
-maintainer:          m@tweag.io
+maintainer:          nicolas.mattia@tweag.io
 category:            Benchmarking
 build-type:          Simple
 extra-source-files:  README.md
