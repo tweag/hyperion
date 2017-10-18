@@ -71,6 +71,7 @@ executable hyperion-end-to-end-benchmark-example
   main-is:             end-to-end-benchmarks.hs
   build-depends:
     base,
+    clock,
     hyperion,
     process
   default-language:    Haskell2010
