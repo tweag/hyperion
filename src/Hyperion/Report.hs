@@ -50,7 +50,7 @@ jsonFlat
   -> HashMap BenchmarkId Report
   -- ^ Report to encode
   -> JSON.Value
-jsonFlat md report = jsonList $ flip fmap (HashMap.elems report) $ \b ->
+jsonFlat md report = jsonList $ (`map` HashMap.elems report) $ \b ->
     JSON.object $
       HashMap.toList md <> (flatten $ JSON.toJSON b)
   where
