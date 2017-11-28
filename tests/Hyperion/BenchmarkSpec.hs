@@ -6,7 +6,6 @@
 module Hyperion.BenchmarkSpec where
 
 import Control.Lens ((^..), foldOf, to)
-import Data.List (nub)
 import Hyperion.Analysis
 import Hyperion.Benchmark
 import Hyperion.Run
@@ -52,4 +51,4 @@ spec = do
         not (hasSeries b) ==>
         monadicIO $ do
           results <- run $ runBenchmark (uniform (fixed 1)) b
-          assert (length results == length (nub (b^..identifiers)))
+          assert (length results == length (b^..identifiers))

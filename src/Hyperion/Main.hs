@@ -17,11 +17,10 @@ module Hyperion.Main
 
 import Control.Applicative
 import Control.Exception (Exception, throwIO, bracket)
-import Control.Lens ((&), (.~), (%~), (%@~), (^..), folded, imapped, mapped, to)
+import Control.Lens ((&), (.~), (%~), (^..), folded, mapped, to)
 import Control.Monad (unless, mzero, void)
 import qualified Data.Aeson as JSON
 import qualified Data.ByteString.Lazy.Char8 as BS
-import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.List (group, sort)
 import Data.Maybe (fromMaybe)
@@ -202,7 +201,7 @@ indexedStrategy Config{..} = case configSelectorPatterns of
 doRun
   :: (BenchmarkId -> Maybe SamplingStrategy)
   -> [Benchmark]
-  -> IO (HashMap BenchmarkId Sample)
+  -> IO [(BenchmarkId, Sample)]
 doRun strategy bks = do
     let ids = bks^..folded.identifiers
     -- Better asymptotics than nub.
@@ -214,7 +213,7 @@ doRun strategy bks = do
 printReport
   :: ReportOutput IO.Handle
   -> JSON.Object -- ^ Metadata
-  -> HashMap BenchmarkId Report
+  -> [Report]
   -> IO ()
 -- XXX: should we print user metadata in pretty mode as well?
 printReport ReportPretty _ report = printReports report
@@ -265,7 +264,7 @@ doAnalyze Config{..} cinfo bks = do
     let strip
           | configRaw = id
           | otherwise = reportMeasurements .~ Nothing
-        report = results & imapped %@~ analyze & mapped %~ strip
+        report = results & mapped %~ uncurry analyze & mapped %~ strip
     now <- getCurrentTime
     let -- TODO Use output of hostname(1) as reasonable default.
         hostId = Nothing :: Maybe Text

@@ -8,8 +8,6 @@ module Hyperion.PrintReport (printReports) where
 import Numeric
 import Control.Lens (view)
 import Data.Text (unpack)
-import Data.HashMap.Strict (HashMap)
-import Hyperion.Internal
 import Hyperion.Report
 import Text.PrettyPrint.ANSI.Leijen
 
@@ -30,6 +28,6 @@ formatReport report =
       | x > 1e3 = show2decs (x/1e3) ++ "us"
       | otherwise = show2decs x ++ "ns"
 
-printReports :: HashMap BenchmarkId Report -> IO ()
+printReports :: [Report] -> IO ()
 printReports report = do
   putDoc $ foldMap formatReport report

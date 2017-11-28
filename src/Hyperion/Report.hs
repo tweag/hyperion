@@ -14,14 +14,12 @@ import Data.Aeson ((.=))
 import Data.Aeson.TH
 import Data.Aeson.Types (camelTo2)
 import Data.Bifunctor (first)
-import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Int
 import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Vector as V
 import Hyperion.Measurement (Sample)
-import Hyperion.Internal
 
 data Report = Report
   { _reportBenchName :: !Text
@@ -37,20 +35,20 @@ deriveJSON defaultOptions{ fieldLabelModifier = camelTo2 '_' . drop (length @[] 
 
 json
   :: JSON.Object -- ^ Metadata
-  -> HashMap BenchmarkId Report -- ^ Report to encode
+  -> [Report] -- ^ Report to encode
   -> JSON.Value
-json md report =
+json md reports =
     JSON.object
       [ "metadata" .= md
-      , "results" .= HashMap.elems report
+      , "results" .= reports
       ]
 
 jsonFlat
   :: JSON.Object -- ^ Metadata
-  -> HashMap BenchmarkId Report
+  -> [Report]
   -- ^ Report to encode
   -> JSON.Value
-jsonFlat md report = jsonList $ (`map` HashMap.elems report) $ \b ->
+jsonFlat md reports = jsonList $ (`map` reports) $ \b ->
     JSON.object $
       HashMap.toList md <> (flatten $ JSON.toJSON b)
   where
