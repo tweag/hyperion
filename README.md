@@ -70,3 +70,5 @@ Available options:
   --arg KEY:VAL            Extra metadata to include in the report, in the
                            format key:value.
 ```
+
+[criterion]: http://www.serpentine.com/criterion/
