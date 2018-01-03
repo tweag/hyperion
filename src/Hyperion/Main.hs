@@ -210,6 +210,24 @@ doRun strategy bks = do
       throwIO $ DuplicateIdentifiers [ n | n:_:_ <- group (sort ids) ]
     foldMap (runBenchmark strategy) bks
 
+reportAnalysis
+  :: Config
+  -> ContextInfo -- ^ Benchmark context information.
+  -> HashMap BenchmarkId Report
+  -> IO ()
+reportAnalysis config cinfo report = do
+    now <- getCurrentTime
+    let metadata =
+          configUserMetadata config
+          -- Prepend user metadata so that the user can rewrite @timestamp@,
+          -- for instance.
+            <> HashMap.fromList [ "timestamp" JSON..= now ]
+    void $ bracket
+      (mapM (openReportHandle cinfo)
+        $ Set.toList (configReportOutputs config))
+      (mapM_ closeReportHandle)
+      (mapM (\h -> printReport h metadata report))
+
 -- | Print the report.
 printReport
   :: ReportOutput IO.Handle
@@ -257,26 +275,15 @@ closeReportHandle (ReportJsonFlat h) = IO.hClose h
 
 doAnalyze
   :: Config -- ^ Hyperion config.
-  -> ContextInfo -- ^ Benchmark context information.
   -> [Benchmark] -- ^ Benchmarks to be run.
-  -> IO ()
-doAnalyze Config{..} cinfo bks = do
+  -> IO (HashMap BenchmarkId Report)
+doAnalyze Config{..} bks = do
     results <- doRun (indexedStrategy Config{..}) bks
     let strip
           | configRaw = id
           | otherwise = reportMeasurements .~ Nothing
         report = results & imapped %@~ analyze & mapped %~ strip
-    now <- getCurrentTime
-    let metadata =
-          configUserMetadata
-          -- Prepend user metadata so that the user can rewrite @timestamp@,
-          -- for instance.
-            <> HashMap.fromList [ "timestamp" JSON..= now ]
-    void $ bracket
-      (mapM (openReportHandle cinfo)
-        $ Set.toList configReportOutputs)
-      (mapM_ closeReportHandle)
-      (mapM (\h -> printReport h metadata report))
+    pure report
 
 defaultMainWith
   :: ConfigMonoid -- ^ Preset Hyperion config.
@@ -302,7 +309,7 @@ defaultMainWith presetConfig packageName bks = do
         Run -> do
           _ <- doRun (indexedStrategy config) bks
           return ()
-        Analyze -> doAnalyze config cinfo bks
+        Analyze -> doAnalyze config bks >>= reportAnalysis config cinfo
 
 defaultMain
   :: String -- ^ Package name, user provided.
