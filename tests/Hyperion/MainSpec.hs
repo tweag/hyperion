@@ -15,8 +15,10 @@ spec = do
       it "checks for duplicate identifiers" $ property $ \b ->
         length (b^..identifiers) /= length (group (sort (b^..identifiers))) ==>
         expectFailure $ monadicIO $ run $
-          defaultMainWith defaultConfig{configMonoidMode = return Run} "spec" [b]
+          defaultMainWith
+            defaultConfigMonoid{configMonoidMode = return Run} "spec" [b]
       it "Analyzes uniquely identified benchmarks" $ property $ \b ->
         length (b^..identifiers) == length (group (sort (b^..identifiers))) ==>
         monadicIO $ run $
-          defaultMainWith defaultConfig{configMonoidReportOutputs = [ReportJson nullOutputPath]} "specs" [b]
+          defaultMainWith
+            defaultConfigMonoid{configMonoidReportOutputs = [ReportJson nullOutputPath]} "specs" [b]

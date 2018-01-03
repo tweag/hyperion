@@ -8,11 +8,16 @@
 module Hyperion.Main
   ( defaultMain
   , Mode(..)
+  , Config(..)
   , ConfigMonoid(..)
   , ReportOutput(..)
+  , configFromMonoid
   , nullOutputPath
   , defaultConfig
+  , defaultConfigMonoid
   , defaultMainWith
+  , doAnalyze
+  , doRun
   ) where
 
 import Control.Applicative
@@ -178,8 +183,11 @@ nullOutputPath = "nul"
 nullOutputPath = "/dev/null"
 #endif
 
-defaultConfig :: ConfigMonoid
-defaultConfig = mempty
+defaultConfigMonoid :: ConfigMonoid
+defaultConfigMonoid = mempty
+
+defaultConfig :: Config
+defaultConfig = configFromMonoid defaultConfigMonoid
 
 data DuplicateIdentifiers a = DuplicateIdentifiers [a]
 instance (Show a, Typeable a) => Exception (DuplicateIdentifiers a)
@@ -315,4 +323,4 @@ defaultMain
   :: String -- ^ Package name, user provided.
   -> [Benchmark] -- ^ Benchmarks to be run.
   -> IO ()
-defaultMain = defaultMainWith defaultConfig
+defaultMain = defaultMainWith defaultConfigMonoid

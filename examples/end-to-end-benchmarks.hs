@@ -20,7 +20,7 @@ benchmarks =
 main :: IO ()
 main = defaultMainWith config "hyperion-example-end-to-end" benchmarks
   where
-    config = defaultConfig
+    config = defaultConfigMonoid
       { configMonoidSamplingStrategy =
           pure $ timeBound (fromSeconds 5) (repeat 10)
       }
