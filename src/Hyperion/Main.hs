@@ -267,13 +267,11 @@ doAnalyze Config{..} cinfo bks = do
           | otherwise = reportMeasurements .~ Nothing
         report = results & imapped %@~ analyze & mapped %~ strip
     now <- getCurrentTime
-    let -- TODO Use output of hostname(1) as reasonable default.
-        hostId = Nothing :: Maybe Text
-        metadata =
+    let metadata =
           configUserMetadata
           -- Prepend user metadata so that the user can rewrite @timestamp@,
           -- for instance.
-            <> HashMap.fromList [ "timestamp" JSON..= now, "location" JSON..= hostId ]
+            <> HashMap.fromList [ "timestamp" JSON..= now ]
     void $ bracket
       (mapM (openReportHandle cinfo)
         $ Set.toList configReportOutputs)
