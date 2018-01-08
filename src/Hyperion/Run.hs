@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections #-}
 
 module Hyperion.Run
   ( -- * Run benchmarks
@@ -33,8 +34,6 @@ import Control.Monad.State.Strict (StateT, evalStateT, get, put)
 import Control.Monad.Trans (MonadTrans(..))
 import Data.Int
 import Data.List (mapAccumR)
-import Data.HashMap.Strict (HashMap)
-import qualified Data.HashMap.Strict as HashMap
 import Data.Sequence (ViewL((:<)), viewl)
 import qualified Data.Vector.Unboxed as Unboxed
 import Hyperion.Analysis (identifiers)
@@ -66,7 +65,7 @@ runBenchmark
   -- ^ Name indexed batch sampling strategy.
   -> Benchmark
   -- ^ Benchmark to be run.
-  -> IO (HashMap BenchmarkId Sample)
+  -> IO [(BenchmarkId, Sample)]
 runBenchmark istrategy bk0 =
   -- Ignore the identifiers we find. Use fully qualified identifiers
   -- accumulated from the lens defined above. The order is DFS in both cases.
@@ -75,9 +74,9 @@ runBenchmark istrategy bk0 =
     go (Bench _ batch) = do
       ident <- pop
       case (istrategy ident) of
-        Nothing -> return HashMap.empty
+        Nothing -> return []
         Just (SamplingStrategy f) ->
-          HashMap.singleton ident <$> lift (f batch)
+          return . (ident,) <$> lift (f batch)
     go (Group _ bks) = foldMap (go) bks
     go (Bracket ini fini g) =
       bracket (lift (ini >>= evaluate . force)) (lift . fini) (go . g . Resource)
