@@ -25,6 +25,9 @@ data Report = Report
   { _reportBenchName :: !Text
   , _reportBenchParams :: [Int]
   , _reportTimeInNanos :: !Double
+  , _linearRegressionTime :: !Double
+  , _linearRegressionConstant :: !Double
+  , _linearRegressionConfidence :: !Double
   , _reportCycles :: !(Maybe Double)
   , _reportAlloc :: !(Maybe Int64)
   , _reportGarbageCollections :: !(Maybe Int64)

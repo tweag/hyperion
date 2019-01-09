@@ -14,7 +14,11 @@ import Text.PrettyPrint.ANSI.Leijen
 formatReport :: Report -> Doc
 formatReport report =
            green (bold (text (unpack (view reportBenchName report)))) <> line
-           <> (indent 2 $ text ("Bench time: " ++ prettyNanos (view reportTimeInNanos report)))
+           <> (indent 2 $ text ("Bench time: " ++ prettyNanos (view reportTimeInNanos report))) <> line
+           <> (indent 2 $ text ("Computed with linear regression: ")) <> line
+           <> (indent 4 $ text ("Bench time: " ++ prettyNanos (view linearRegressionTime report))) <> line
+           <> (indent 4 $ text ("Constant factor: " ++ prettyNanos (view linearRegressionConstant report))) <> line
+           <> (indent 4 $ text ("Confidence: " ++ showFFloat (Just 4) (view linearRegressionConfidence report) ""))
            <> line
   where
     show2decs x= showFFloat (Just 2) x ""
