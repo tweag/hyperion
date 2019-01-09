@@ -14,6 +14,7 @@ import Control.Lens
   , foldMapOf
   , folded
   , to
+  , toListOf
   )
 
 import Control.Lens.Each
@@ -23,6 +24,8 @@ import Hyperion.Benchmark
 import Hyperion.Internal
 import Hyperion.Measurement
 import Hyperion.Report
+import Statistics.Regression
+import qualified Data.Vector.Unboxed as UV
 
 identifiers :: Fold Benchmark BenchmarkId
 identifiers = go []
@@ -47,7 +50,10 @@ analyze ident samp = Report
     , _reportBenchParams =
         map (\(Parameter x) -> fromEnum x) $ benchmarkParameters ident
     , _reportTimeInNanos =
-        totalDuration / trueNumIterations
+        totalDuration / trueNumIterations 
+    , _linearRegressionTime = slope
+    , _linearRegressionConstant = yIntercept
+    , _linearRegressionConfidence = determinationCoefficient
     , _reportCycles = Nothing
     , _reportAlloc = Nothing
     , _reportGarbageCollections = Nothing
@@ -64,3 +70,7 @@ analyze ident samp = Report
         Sum
         (foldMapOf (measurements.each.batchSize.to realToFrac))
         samp
+    ([slope,yIntercept],determinationCoefficient) = (\(v,r) -> (UV.toList v,r)) $ olsRegress [batchSizesVect] durationsVect 
+      where
+        batchSizesVect = UV.fromList $ fromIntegral <$> toListOf (measurements.each.batchSize) samp
+        durationsVect = UV.fromList $ fromIntegral <$> toListOf (measurements.each.duration) samp
