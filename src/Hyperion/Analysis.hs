@@ -70,7 +70,7 @@ analyze ident samp = Report
         Sum
         (foldMapOf (measurements.each.batchSize.to realToFrac))
         samp
-    ([slope,yIntercept],determinationCoefficient) = (\(v,r) -> (UV.toList v,r)) $ olsRegress [batchSizesVect] durationsVect 
+    ([slope,yIntercept],determinationCoefficient) = over _1 UV.toList $ olsRegress [batchSizesVect] durationsVect 
       where
         batchSizesVect = UV.fromList $ fromIntegral <$> toListOf (measurements.each.batchSize) samp
         durationsVect = UV.fromList $ fromIntegral <$> toListOf (measurements.each.duration) samp
